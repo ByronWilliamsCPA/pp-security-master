@@ -154,9 +154,13 @@ pytest -m "security"           # Security assertion tests
 
 ## Package Overrides
 
-- **Dependency manager**: Using `poetry` instead of `uv` -- this project
-  predates the `uv` canonical standard. No migration required until a future
-  major rework.
+- **Dependency manager**: `uv` is the canonical dependency manager as of the
+  Phase 1 CI modernization (PR #34). `pyproject.toml` uses PEP 621
+  `[project.dependencies]` and PEP 735 `[dependency-groups]`; `uv.lock` is
+  committed. Use `uv sync --frozen --dev` for setup and `uv run <tool>` to
+  invoke dev tooling. Legacy Poetry-only references in `Makefile`,
+  `noxfile.py`, and `.pre-commit-config.yaml` are tracked for cleanup in a
+  follow-up phase.
 
 ## Global Rule References
 
