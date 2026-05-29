@@ -45,18 +45,18 @@ Portfolio Performance (PP) is a powerful open-source desktop portfolio tracker. 
 ### Prerequisites
 
 - **PostgreSQL 17**: Running on Unraid server (see [Database Setup](#database-setup) below)
-- **Python**: 3.11+ with Poetry installed
+- **Python**: 3.11+ with [uv](https://docs.astral.sh/uv/) installed
 - **Network**: Connectivity to PostgreSQL server (default port 5436)
 
 ### Development Setup
 
 1. **Clone Repository**: `git clone [repository-url] && cd pp-security-master`
-2. **Install Dependencies**: `poetry install`
+2. **Install Dependencies**: `uv sync`
 3. **Install qlty CLI**: `curl https://qlty.sh | bash` (standalone quality runner, not a Python package)
 4. **Configure Environment**: Copy `.env.example` to `.env` and configure database connection
-5. **Verify Database**: `poetry run python tests/test_db_connection.py`
-6. **Run Tests**: `poetry run pytest -v --cov=src --cov-report=html`
-7. **Code Quality**: `poetry run nox -s lint` for formatting and linting
+5. **Verify Database**: `uv run python tests/test_db_connection.py`
+6. **Run Tests**: `uv run pytest -v --cov=src --cov-report=html`
+7. **Code Quality**: `uv run nox -s lint` for formatting and linting
 
 > **Note**: Database migrations and CLI commands are currently under development
 
@@ -85,7 +85,7 @@ Portfolio Performance (PP) is a powerful open-source desktop portfolio tracker. 
    nc -zv [unraid-server-ip] 5436
    
    # Test database connection
-   poetry run python tests/test_db_connection.py
+   uv run python tests/test_db_connection.py
    ```
 
 3. **Troubleshooting**: See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for common issues
@@ -103,7 +103,7 @@ pp-security-master/
 ├─ LICENSE                          # MIT License
 ├─ Makefile                         # Build automation
 ├─ pyproject.toml                   # Dependencies and project configuration
-├─ poetry.lock                      # Dependency lock file
+├─ uv.lock                          # Dependency lock file
 ├─ noxfile.py                       # Test automation
 ├─ codecov.yaml                     # Coverage configuration
 ├─ docs/

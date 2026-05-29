@@ -19,7 +19,7 @@ body:
       label: Steps to Reproduce
       description: Minimal steps to reproduce the issue
       placeholder: |
-        1. Run `poetry run ...`
+        1. Run `uv run ...`
         2. Observe error
     validations:
       required: true

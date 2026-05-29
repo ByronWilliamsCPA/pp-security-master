@@ -46,16 +46,16 @@ help improve our code, documentation, and community processes.
 ## Code Style
 
 - Follow [PEP 8](https://peps.python.org/pep-0008/) and Google-style docstrings.
-- Run `poetry run ruff format .` for formatting.
-- Run `poetry run ruff check --fix .` and `poetry run basedpyright` for lint and type checks.
+- Run `uv run ruff format .` for formatting.
+- Run `uv run ruff check --fix .` and `uv run basedpyright` for lint and type checks.
 - Imports must be grouped: standard library, third-party, local application.
 
 ## Local Development Setup
 
-1. **Install dependencies** (requires Poetry):
+1. **Install dependencies** (requires [uv](https://docs.astral.sh/uv/)):
 
    ```bash
-   poetry install
+   uv sync
    ```
 
 2. **Set up environment**:
@@ -68,22 +68,22 @@ help improve our code, documentation, and community processes.
 3. **Run tests**:
 
    ```bash
-   poetry run nox -s unit     # Unit tests only (fast)
-   poetry run nox             # Full test suite
+   uv run nox -s unit     # Unit tests only (fast)
+   uv run nox             # Full test suite
    ```
 
 4. **Run linting and type checking**:
 
    ```bash
-   poetry run ruff format .
-   poetry run ruff check --fix .
-   poetry run basedpyright
+   uv run ruff format .
+   uv run ruff check --fix .
+   uv run basedpyright
    ```
 
 5. **Run security checks**:
 
    ```bash
-   poetry run nox -s security
+   uv run nox -s security
    ```
 
 Last updated: 2026-04-20
