@@ -21,10 +21,10 @@ class SecurityDataValidator:
         """Validate ISIN format and check digit.
 
         Args:
-            isin: ISIN string to validate, or None for optional fields.
+            isin (str | None): ISIN string to validate, or None for optional fields.
 
         Returns:
-            True when isin is None, empty, or passes format and check-digit
+            bool: True when isin is None, empty, or passes format and check-digit
             validation. False when format or check digit is invalid.
         """
         if not isin:
@@ -54,10 +54,10 @@ class SecurityDataValidator:
         """Validate WKN format.
 
         Args:
-            wkn: WKN string to validate, or None for optional fields.
+            wkn (str | None): WKN string to validate, or None for optional fields.
 
         Returns:
-            True when wkn is None, empty, or matches the 6-character alphanumeric
+            bool: True when wkn is None, empty, or matches the 6-character alphanumeric
             pattern. False when the format is invalid.
         """
         if not wkn:
@@ -69,10 +69,10 @@ class SecurityDataValidator:
         """Validate trading symbol format.
 
         Args:
-            symbol: Ticker symbol to validate, or None for optional fields.
+            symbol (str | None): Ticker symbol to validate, or None for optional fields.
 
         Returns:
-            True when symbol is None, empty, or matches the allowed pattern.
+            bool: True when symbol is None, empty, or matches the allowed pattern.
             False when the format is invalid.
         """
         if not symbol:
@@ -84,10 +84,10 @@ class SecurityDataValidator:
         """Validate currency code (ISO 4217).
 
         Args:
-            currency: Three-letter currency code to validate.
+            currency (str): Three-letter currency code to validate.
 
         Returns:
-            True when currency is a non-empty 3-character uppercase string.
+            bool: True when currency is a non-empty 3-character uppercase string.
             False otherwise.
         """
         return bool(
@@ -102,10 +102,10 @@ class SecurityDataValidator:
         """Score core identification fields (name, ISIN, symbol, WKN) at 40% weight.
 
         Args:
-            security: SecurityMaster record to score.
+            security (SecurityMaster): SecurityMaster record to score.
 
         Returns:
-            Decimal contribution (0.0 to 0.4) from identification completeness.
+            Decimal: Decimal contribution (0.0 to 0.4) from identification completeness.
         """
         earned = 0
         total = 5  # 1 name + 2 ISIN + 1 symbol + 1 WKN
@@ -126,10 +126,10 @@ class SecurityDataValidator:
         """Score pricing data fields (price, date, currency) at 20% weight.
 
         Args:
-            security: SecurityMaster record to score.
+            security (SecurityMaster): SecurityMaster record to score.
 
         Returns:
-            Decimal contribution (0.0 to 0.2) from pricing completeness.
+            Decimal: Decimal contribution (0.0 to 0.2) from pricing completeness.
         """
         earned = 0
         total = 3
@@ -148,10 +148,10 @@ class SecurityDataValidator:
         """Score classification fields (30%) and data source fields (10%).
 
         Args:
-            security: SecurityMaster record to score.
+            security (SecurityMaster): SecurityMaster record to score.
 
         Returns:
-            Decimal contribution (0.0 to 0.4) from classification and source completeness.
+            Decimal: Decimal contribution (0.0 to 0.4) from classification and source completeness.
         """
         classification_fields = [
             security.sector,
@@ -178,10 +178,10 @@ class SecurityDataValidator:
         """Calculate data quality score (0.00-1.00) based on completeness and validity.
 
         Args:
-            security: SecurityMaster record to score.
+            security (SecurityMaster): SecurityMaster record to score.
 
         Returns:
-            Decimal score between 0.00 and 1.00 representing data quality,
+            Decimal: Decimal score between 0.00 and 1.00 representing data quality,
             weighted across identification, pricing, classification, and source fields.
         """
         score = (
@@ -196,11 +196,11 @@ class SecurityDataValidator:
         """Validate a security record and return validation status and errors.
 
         Args:
-            security: SecurityMaster record to validate.
+            security (SecurityMaster): SecurityMaster record to validate.
 
         Returns:
-            Tuple of (is_valid, errors) where is_valid is True when no errors
-            were found and errors is a list of human-readable error messages.
+            tuple[bool, list[str]]: Tuple of (is_valid, errors) where is_valid is True
+            when no errors were found and errors is a list of human-readable error messages.
         """
         errors: list[str] = []
 

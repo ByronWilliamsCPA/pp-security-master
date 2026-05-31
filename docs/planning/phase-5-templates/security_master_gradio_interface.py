@@ -55,7 +55,6 @@ class SecurityMasterInterface:
     """
 
     def __init__(self):
-        """Initialize the Security-Master interface with all components."""
         self.classifier = SecurityClassifier()
         self.benchmark_generator = BenchmarkSecurityGenerator()
         self.pp_xml_generator = PPXMLGenerator()
@@ -84,7 +83,7 @@ class SecurityMasterInterface:
         """Create the complete Gradio application with all tabs and functionality.
 
         Returns:
-            The result.
+            gr.Blocks: Configured Gradio Blocks application ready to launch.
         """
 
         # Choose theme based on PromptCraft availability
@@ -1246,26 +1245,26 @@ class SecurityMasterInterface:
     # Event handler setup methods
     def _setup_classification_handlers(
         self,
-        search_btn,
-        search_input,
-        search_type,
-        search_results,
-        save_btn,
-        auto_classify_btn,
-        result_display,
-        stats_display,
+        search_btn: Any,
+        search_input: Any,
+        search_type: Any,
+        search_results: Any,
+        save_btn: Any,
+        auto_classify_btn: Any,
+        result_display: Any,
+        stats_display: Any,
     ):
         """Setup event handlers for classification tab.
 
         Args:
-            search_input: The search input value.
-            result_display: The result display value.
-            search_btn: The search btn value.
-            stats_display: The stats display value.
-            search_type: The search type value.
-            auto_classify_btn: The auto classify btn value.
-            save_btn: The save btn value.
-            search_results: The search results value.
+            search_btn (Any): Gradio button that triggers search.
+            search_input (Any): Gradio text input for the search query.
+            search_type (Any): Gradio dropdown for search type selection.
+            search_results (Any): Gradio component to display search results.
+            save_btn (Any): Gradio button to save manual classification.
+            auto_classify_btn (Any): Gradio button to trigger auto-classification.
+            result_display (Any): Gradio component to display classification result.
+            stats_display (Any): Gradio component to display statistics.
         """
 
         search_btn.click(
@@ -1282,24 +1281,24 @@ class SecurityMasterInterface:
 
     def _setup_import_handlers(
         self,
-        import_btn,
-        file_upload,
-        institution_type,
-        options,
-        status_display,
-        results_display,
-        history_display,
+        import_btn: Any,
+        file_upload: Any,
+        institution_type: Any,
+        options: Any,
+        status_display: Any,
+        results_display: Any,
+        history_display: Any,
     ):
         """Setup event handlers for import tab.
 
         Args:
-            options: The options value.
-            status_display: The status display value.
-            institution_type: The institution type value.
-            file_upload: The file upload value.
-            history_display: The history display value.
-            results_display: The results display value.
-            import_btn: The import btn value.
+            import_btn (Any): Gradio button that triggers the import.
+            file_upload (Any): Gradio file upload component.
+            institution_type (Any): Gradio dropdown for institution type.
+            options (Any): Gradio component for import options.
+            status_display (Any): Gradio component to display import status.
+            results_display (Any): Gradio component to display results.
+            history_display (Any): Gradio component to display import history.
         """
 
         import_btn.click(
@@ -1310,26 +1309,26 @@ class SecurityMasterInterface:
 
     def _setup_analytics_handlers(
         self,
-        generate_btn,
-        portfolio_selector,
-        benchmark_selector,
-        start_date,
-        end_date,
-        metrics_display,
-        risk_display,
-        chart_display,
+        generate_btn: Any,
+        portfolio_selector: Any,
+        benchmark_selector: Any,
+        start_date: Any,
+        end_date: Any,
+        metrics_display: Any,
+        risk_display: Any,
+        chart_display: Any,
     ):
         """Setup event handlers for analytics tab.
 
         Args:
-            start_date: The start date value.
-            end_date: The end date value.
-            metrics_display: The metrics display value.
-            risk_display: The risk display value.
-            chart_display: The chart display value.
-            portfolio_selector: The portfolio selector value.
-            benchmark_selector: The benchmark selector value.
-            generate_btn: The generate btn value.
+            generate_btn (Any): Gradio button that triggers analytics generation.
+            portfolio_selector (Any): Gradio dropdown for portfolio selection.
+            benchmark_selector (Any): Gradio dropdown for benchmark selection.
+            start_date (Any): Gradio date input for the analysis start date.
+            end_date (Any): Gradio date input for the analysis end date.
+            metrics_display (Any): Gradio component to display performance metrics.
+            risk_display (Any): Gradio component to display risk metrics.
+            chart_display (Any): Gradio component to display performance chart.
         """
 
         generate_btn.click(
@@ -1340,24 +1339,24 @@ class SecurityMasterInterface:
 
     def _setup_benchmark_handlers(
         self,
-        create_portfolio_btn,
-        source_portfolio,
-        benchmark_name,
-        create_custom_btn,
-        securities_config,
-        result_display,
-        benchmarks_display,
+        create_portfolio_btn: Any,
+        source_portfolio: Any,
+        benchmark_name: Any,
+        create_custom_btn: Any,
+        securities_config: Any,
+        result_display: Any,
+        benchmarks_display: Any,
     ):
         """Setup event handlers for benchmark tab.
 
         Args:
-            securities_config: The securities config value.
-            create_custom_btn: The create custom btn value.
-            create_portfolio_btn: The create portfolio btn value.
-            benchmarks_display: The benchmarks display value.
-            result_display: The result display value.
-            source_portfolio: The source portfolio value.
-            benchmark_name: The benchmark name value.
+            create_portfolio_btn (Any): Gradio button to create a portfolio benchmark.
+            source_portfolio (Any): Gradio dropdown for source portfolio selection.
+            benchmark_name (Any): Gradio text input for the benchmark name.
+            create_custom_btn (Any): Gradio button to create a custom index benchmark.
+            securities_config (Any): Gradio component for custom securities configuration.
+            result_display (Any): Gradio component to display the creation result.
+            benchmarks_display (Any): Gradio component to display existing benchmarks.
         """
 
         create_portfolio_btn.click(
@@ -1368,26 +1367,26 @@ class SecurityMasterInterface:
 
     def _setup_export_handlers(
         self,
-        generate_btn,
-        client_selector,
-        options,
-        format_selector,
-        status_display,
-        preview_display,
-        stats_display,
-        download_file,
+        generate_btn: Any,
+        client_selector: Any,
+        options: Any,
+        format_selector: Any,
+        status_display: Any,
+        preview_display: Any,
+        stats_display: Any,
+        download_file: Any,
     ):
         """Setup event handlers for export tab.
 
         Args:
-            options: The options value.
-            status_display: The status display value.
-            client_selector: The client selector value.
-            preview_display: The preview display value.
-            download_file: The download file value.
-            format_selector: The format selector value.
-            generate_btn: The generate btn value.
-            stats_display: The stats display value.
+            generate_btn (Any): Gradio button that triggers export generation.
+            client_selector (Any): Gradio dropdown for client selection.
+            options (Any): Gradio component for export options.
+            format_selector (Any): Gradio dropdown for export format selection.
+            status_display (Any): Gradio component to display export status.
+            preview_display (Any): Gradio component to preview the export.
+            stats_display (Any): Gradio component to display export statistics.
+            download_file (Any): Gradio file component for downloading the export.
         """
 
         generate_btn.click(
@@ -1398,20 +1397,20 @@ class SecurityMasterInterface:
 
     def _setup_quality_handlers(
         self,
-        refresh_btn,
-        institution_quality,
-        security_quality,
-        validation_issues,
-        trend_chart,
+        refresh_btn: Any,
+        institution_quality: Any,
+        security_quality: Any,
+        validation_issues: Any,
+        trend_chart: Any,
     ):
         """Setup event handlers for quality tab.
 
         Args:
-            refresh_btn: The refresh btn value.
-            trend_chart: The trend chart value.
-            validation_issues: The validation issues value.
-            security_quality: The security quality value.
-            institution_quality: The institution quality value.
+            refresh_btn (Any): Gradio button that triggers quality metrics refresh.
+            institution_quality (Any): Gradio component for institution quality display.
+            security_quality (Any): Gradio component for security quality display.
+            validation_issues (Any): Gradio component for validation issues display.
+            trend_chart (Any): Gradio component for quality trend chart.
         """
 
         refresh_btn.click(
@@ -1426,22 +1425,22 @@ class SecurityMasterInterface:
 
     def _setup_admin_handlers(
         self,
-        refresh_btn,
-        system_health,
-        service_status,
-        users_display,
-        audit_display,
-        api_display,
+        refresh_btn: Any,
+        system_health: Any,
+        service_status: Any,
+        users_display: Any,
+        audit_display: Any,
+        api_display: Any,
     ):
         """Setup event handlers for admin tab.
 
         Args:
-            audit_display: The audit display value.
-            api_display: The api display value.
-            refresh_btn: The refresh btn value.
-            service_status: The service status value.
-            users_display: The users display value.
-            system_health: The system health value.
+            refresh_btn (Any): Gradio button that triggers system status refresh.
+            system_health (Any): Gradio component for system health display.
+            service_status (Any): Gradio component for service status display.
+            users_display (Any): Gradio component for users display.
+            audit_display (Any): Gradio component for audit log display.
+            api_display (Any): Gradio component for API usage display.
         """
 
         refresh_btn.click(
@@ -1457,11 +1456,7 @@ class SecurityMasterInterface:
 
     # Core functionality methods (implementations would be complete)
     def _initialize_app_state(self):
-        """Initialize application state on load.
-
-        Returns:
-            The result.
-        """
+        """Initialize application state on load."""
         # Implementation would set up user context and permissions
         return (
             gr.update(visible=True),
@@ -1477,11 +1472,11 @@ class SecurityMasterInterface:
         """Search securities based on query and type.
 
         Args:
-            query: The query value.
-            search_type: The search type value.
+            query (str): Search query string.
+            search_type (str): Type of search (e.g., symbol, name, ISIN).
 
         Returns:
-            The result.
+            tuple[pd.DataFrame, str]: Search results dataframe and HTML stats string.
         """
         # Implementation would query database and return results
         sample_data = pd.DataFrame(
@@ -1542,25 +1537,25 @@ class SecurityMasterInterface:
         """Save manual classification.
 
         Returns:
-            The result.
+            str: Success or error status message.
         """
         return "✅ Classification saved successfully"
 
     def _process_institution_import(
         self,
-        file,
+        file: Any,
         institution: str,
         options: list[str],
     ) -> tuple[str, pd.DataFrame, pd.DataFrame]:
         """Process institution file import.
 
         Args:
-            file: The file value.
-            institution: The institution value.
-            options: The options value.
+            file (Any): Uploaded file object from Gradio file component.
+            institution (str): Institution type identifier (e.g., "Wells Fargo").
+            options (list[str]): Import options selected by the user.
 
         Returns:
-            The result.
+            tuple[str, pd.DataFrame, pd.DataFrame]: Status message, results dataframe, and history dataframe.
         """
         # Implementation would process file and return results
         status = "✅ File imported successfully. Processed 1,247 transactions, classified 987 securities."
@@ -1612,19 +1607,16 @@ class SecurityMasterInterface:
         self,
         portfolio: str,
         benchmark: str,
-        start_date,
-        end_date,
+        start_date: Any,
+        end_date: Any,
     ):
         """Generate portfolio analytics.
 
         Args:
-            start_date: The start date value.
-            end_date: The end date value.
-            benchmark: The benchmark value.
-            portfolio: The portfolio value.
-
-        Returns:
-            The result.
+            portfolio (str): Portfolio identifier to analyze.
+            benchmark (str): Benchmark identifier for comparison.
+            start_date (Any): Gradio date input value for analysis start.
+            end_date (Any): Gradio date input value for analysis end.
         """
         # Implementation would calculate analytics and return results
 
@@ -1698,11 +1690,11 @@ class SecurityMasterInterface:
         """Create portfolio benchmark.
 
         Args:
-            source_portfolio: The source portfolio value.
-            benchmark_name: The benchmark name value.
+            source_portfolio (str): Source portfolio ID to replicate as benchmark.
+            benchmark_name (str): Name for the new benchmark security.
 
         Returns:
-            The result.
+            tuple[str, pd.DataFrame]: Status message and updated benchmarks dataframe.
         """
         result = (
             f"✅ Created portfolio benchmark '{benchmark_name}' from {source_portfolio}"
@@ -1726,12 +1718,9 @@ class SecurityMasterInterface:
         """Generate Portfolio Performance export.
 
         Args:
-            client: The client value.
-            options: The options value.
-            format: The format value.
-
-        Returns:
-            The result.
+            client (str): Client configuration name to export.
+            options (list[str]): Export options (e.g., include prices, include transactions).
+            format (str): Export format (e.g., xml, json).
         """
         status = (
             f"✅ Generated {format} export for {client} with {len(options)} options"
@@ -1770,11 +1759,7 @@ class SecurityMasterInterface:
         return status, preview, stats_data, None
 
     def _refresh_quality_metrics(self):
-        """Refresh data quality metrics.
-
-        Returns:
-            The result.
-        """
+        """Refresh data quality metrics."""
         institution_data = pd.DataFrame(
             {
                 "Institution": [
@@ -1854,11 +1839,7 @@ class SecurityMasterInterface:
         return institution_data, security_data, issues_data, fig
 
     def _refresh_system_status(self):
-        """Refresh system status information.
-
-        Returns:
-            The result.
-        """
+        """Refresh system status information."""
         health_data = pd.DataFrame(
             {
                 "Component": [
@@ -1976,7 +1957,7 @@ class SecurityMasterInterface:
         """Get custom CSS styling for the application.
 
         Returns:
-            The result.
+            str: CSS string with custom styling rules.
         """
         return """
         /* Security-Master Interface Styling */
@@ -2177,7 +2158,7 @@ class SecurityMasterInterface:
         """Get custom HTML head content.
 
         Returns:
-            The result.
+            str: HTML string for insertion into the document head.
         """
         return """
         <meta charset="utf-8">
@@ -2192,7 +2173,7 @@ class SecurityMasterInterface:
         """Get header HTML content.
 
         Returns:
-            The result.
+            str: HTML string for the application header.
         """
         return """
         <div class="sm-header">
@@ -2205,7 +2186,7 @@ class SecurityMasterInterface:
         """Get footer HTML content.
 
         Returns:
-            The result.
+            str: HTML string for the application footer.
         """
         return """
         <div class="sm-footer">

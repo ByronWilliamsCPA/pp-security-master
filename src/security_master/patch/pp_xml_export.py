@@ -45,11 +45,11 @@ class PPXMLExportService:
         """Generate complete PP XML backup file.
 
         Args:
-            config_name: Name of the active PPClientConfig record to use.
+            config_name (str): Name of the active PPClientConfig record to use.
                 Defaults to "default".
 
         Returns:
-            Pretty-printed XML string representing the complete PP backup.
+            str: Pretty-printed XML string representing the complete PP backup.
 
         Raises:
             ValueError: When no active PP configuration is found for config_name.
@@ -89,7 +89,7 @@ class PPXMLExportService:
         """Add securities section with complete price history.
 
         Args:
-            parent: Parent XML element to append the securities section to.
+            parent (ET.Element): Parent XML element to append the securities section to.
         """
         securities_elem = ET.SubElement(parent, "securities")
 
@@ -131,8 +131,8 @@ class PPXMLExportService:
         """Add complete price history for a security.
 
         Args:
-            security_elem: XML element for the security to append prices to.
-            security_id: Database ID of the security whose prices to load.
+            security_elem (ET.Element): XML element for the security to append prices to.
+            security_id (int): Database ID of the security whose prices to load.
         """
         prices = (
             self.session.query(PPSecurityPrice)
@@ -153,7 +153,7 @@ class PPXMLExportService:
         """Add watchlists section (typically empty).
 
         Args:
-            parent: Parent XML element to append the watchlists section to.
+            parent (ET.Element): Parent XML element to append the watchlists section to.
         """
         ET.SubElement(parent, "watchlists")
 
@@ -161,7 +161,7 @@ class PPXMLExportService:
         """Add accounts section with all transactions.
 
         Args:
-            parent: Parent XML element to append the accounts section to.
+            parent (ET.Element): Parent XML element to append the accounts section to.
         """
         accounts_elem = ET.SubElement(parent, "accounts")
 
@@ -199,8 +199,8 @@ class PPXMLExportService:
         """Add all transactions for an account.
 
         Args:
-            account_elem: XML element for the account to append transactions to.
-            account_id: Database ID of the account whose transactions to load.
+            account_elem (ET.Element): XML element for the account to append transactions to.
+            account_id (int): Database ID of the account whose transactions to load.
         """
         transactions = (
             self.session.query(PPAccountTransaction)
@@ -264,9 +264,9 @@ class PPXMLExportService:
         """Add fee and tax units for a transaction.
 
         Args:
-            transaction_elem: XML element for the transaction to append units to.
-            transaction_id: Database ID of the transaction whose units to load.
-            transaction_type: Type discriminator used to filter units ("ACCOUNT"
+            transaction_elem (ET.Element): XML element for the transaction to append units to.
+            transaction_id (int): Database ID of the transaction whose units to load.
+            transaction_type (str): Type discriminator used to filter units ("ACCOUNT"
                 or "PORTFOLIO").
         """
         units = (
@@ -287,7 +287,7 @@ class PPXMLExportService:
         """Add portfolios section with all portfolio transactions.
 
         Args:
-            parent: Parent XML element to append the portfolios section to.
+            parent (ET.Element): Parent XML element to append the portfolios section to.
         """
         portfolios_elem = ET.SubElement(parent, "portfolios")
 
@@ -345,8 +345,8 @@ class PPXMLExportService:
         """Add all transactions for a portfolio.
 
         Args:
-            portfolio_elem: XML element for the portfolio to append transactions to.
-            portfolio_id: Database ID of the portfolio whose transactions to load.
+            portfolio_elem (ET.Element): XML element for the portfolio to append transactions to.
+            portfolio_id (int): Database ID of the portfolio whose transactions to load.
         """
         transactions = (
             self.session.query(PPPortfolioTransaction)
@@ -457,7 +457,7 @@ class PPXMLExportService:
         """Add dashboards section (typically empty).
 
         Args:
-            parent: Parent XML element to append the dashboards section to.
+            parent (ET.Element): Parent XML element to append the dashboards section to.
         """
         ET.SubElement(parent, "dashboards")
 
@@ -465,7 +465,7 @@ class PPXMLExportService:
         """Add properties section from settings.
 
         Args:
-            parent: Parent XML element to append the properties section to.
+            parent (ET.Element): Parent XML element to append the properties section to.
         """
         properties_elem = ET.SubElement(parent, "properties")
 
@@ -483,7 +483,7 @@ class PPXMLExportService:
         """Add settings section with bookmarks.
 
         Args:
-            parent: Parent XML element to append the settings section to.
+            parent (ET.Element): Parent XML element to append the settings section to.
         """
         settings_elem = ET.SubElement(parent, "settings")
 
@@ -500,10 +500,10 @@ class PPXMLExportService:
         """Return a pretty-printed XML string for the Element.
 
         Args:
-            elem: Root XML Element to serialize and prettify.
+            elem (ET.Element): Root XML Element to serialize and prettify.
 
         Returns:
-            Indented XML string with two-space indentation.
+            str: Indented XML string with two-space indentation.
 
         Raises:
             ValueError: When defusedxml raises DefusedXmlException during parsing.
@@ -520,8 +520,8 @@ class PPXMLExportService:
         """Export complete PP XML backup to file.
 
         Args:
-            file_path: Filesystem path where the XML file will be written.
-            config_name: Name of the active PPClientConfig record to use.
+            file_path (str): Filesystem path where the XML file will be written.
+            config_name (str): Name of the active PPClientConfig record to use.
                 Defaults to "default".
         """
         xml_content = self.generate_complete_backup(config_name)
@@ -533,10 +533,10 @@ class PPXMLExportService:
         """Validate exported XML and return statistics.
 
         Args:
-            xml_content: XML string to validate and count elements in.
+            xml_content (str): XML string to validate and count elements in.
 
         Returns:
-            Dict with counts for securities, accounts, portfolios,
+            dict[str, int]: Counts for securities, accounts, portfolios,
             account_transactions, portfolio_transactions, prices, and bookmarks.
 
         Raises:
@@ -566,10 +566,10 @@ def pp_amount_to_decimal(pp_amount: int) -> float:
     """Convert PP integer amount (cents) to decimal.
 
     Args:
-        pp_amount: PP integer amount in cents.
+        pp_amount (int): PP integer amount in cents.
 
     Returns:
-        Amount as a float (divided by 100).
+        float: Amount as a float (divided by 100).
     """
     return pp_amount / 100.0
 
@@ -578,10 +578,10 @@ def decimal_to_pp_amount(amount: float) -> int:
     """Convert decimal amount to PP integer (cents).
 
     Args:
-        amount: Decimal amount to convert.
+        amount (float): Decimal amount to convert.
 
     Returns:
-        PP integer amount (multiplied by 100).
+        int: PP integer amount (multiplied by 100).
     """
     return int(amount * 100)
 
@@ -590,10 +590,10 @@ def pp_shares_to_decimal(pp_shares: int) -> float:
     """Convert PP integer shares to decimal.
 
     Args:
-        pp_shares: PP integer share count.
+        pp_shares (int): PP integer share count.
 
     Returns:
-        Share count as a float (divided by 100,000,000).
+        float: Share count as a float (divided by 100,000,000).
     """
     return pp_shares / 100000000.0
 
@@ -602,9 +602,9 @@ def decimal_to_pp_shares(shares: float) -> int:
     """Convert decimal shares to PP integer format.
 
     Args:
-        shares: Decimal share count to convert.
+        shares (float): Decimal share count to convert.
 
     Returns:
-        PP integer share count (multiplied by 100,000,000).
+        int: PP integer share count (multiplied by 100,000,000).
     """
     return int(shares * 100000000)

@@ -14,7 +14,7 @@ def get_database_url() -> str:
     development-friendly defaults when variables are absent.
 
     Returns:
-        PostgreSQL connection URL as a string.
+        str: PostgreSQL connection URL as a string.
     """
     db_host = os.getenv("DB_HOST", "localhost")
     db_port = os.getenv("DB_PORT", "5432")
@@ -29,11 +29,11 @@ def create_db_engine(database_url: str | None = None) -> Engine:
     """Create a SQLAlchemy engine with connection pooling configured.
 
     Args:
-        database_url: PostgreSQL connection URL. When None, calls
+        database_url (str | None): PostgreSQL connection URL. When None, calls
             get_database_url() to read from environment variables.
 
     Returns:
-        SQLAlchemy Engine with pool_pre_ping enabled and pool_recycle=300.
+        Engine: SQLAlchemy Engine with pool_pre_ping enabled and pool_recycle=300.
     """
     if database_url is None:
         database_url = get_database_url()
@@ -50,7 +50,7 @@ def create_tables(engine: Engine) -> None:
     """Create all ORM-mapped tables in the target database if they do not exist.
 
     Args:
-        engine: SQLAlchemy Engine connected to the target database.
+        engine (Engine): SQLAlchemy Engine connected to the target database.
     """
     Base.metadata.create_all(bind=engine)
 
@@ -59,10 +59,10 @@ def get_session_factory(engine: Engine) -> Callable[[], Session]:
     """Build a callable session factory bound to the given engine.
 
     Args:
-        engine: SQLAlchemy Engine to bind new sessions to.
+        engine (Engine): SQLAlchemy Engine to bind new sessions to.
 
     Returns:
-        Callable that returns a fresh Session on each invocation.
+        Callable[[], Session]: Callable that returns a fresh Session on each invocation.
     """
     return sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -76,10 +76,10 @@ def get_db_session(
     exception. Always closes the session in the finally block.
 
     Args:
-        session_factory: Callable that produces a new Session instance.
+        session_factory (Callable[[], Session]): Callable that produces a new Session instance.
 
     Yields:
-        An active, open database Session.
+        Session: An active, open database Session.
 
     Raises:
         Exception: Re-raises any exception after rolling back the session.

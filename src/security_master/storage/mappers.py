@@ -42,11 +42,11 @@ class PortfolioMappingManager:
         """Get existing sheet mapping or create new one with default PP group mapping.
 
         Args:
-            sheet_id: Unique identifier for the Kubera sheet.
-            sheet_name: Human-readable name of the Kubera sheet.
+            sheet_id (str): Unique identifier for the Kubera sheet.
+            sheet_name (str): Human-readable name of the Kubera sheet.
 
         Returns:
-            Existing or newly created KuberaSheet ORM instance.
+            KuberaSheet: Existing or newly created KuberaSheet ORM instance.
         """
         sheet = self.session.query(KuberaSheet).filter_by(sheet_id=sheet_id).first()
 
@@ -71,12 +71,12 @@ class PortfolioMappingManager:
         """Get existing section mapping or create new one with default PP account mapping.
 
         Args:
-            section_id: Unique identifier for the Kubera section.
-            section_name: Human-readable name of the Kubera section.
-            sheet: Parent KuberaSheet that owns this section.
+            section_id (str): Unique identifier for the Kubera section.
+            section_name (str): Human-readable name of the Kubera section.
+            sheet (KuberaSheet): Parent KuberaSheet that owns this section.
 
         Returns:
-            Existing or newly created KuberaSection ORM instance.
+            KuberaSection: Existing or newly created KuberaSection ORM instance.
         """
         section = (
             self.session.query(KuberaSection).filter_by(section_id=section_id).first()
@@ -99,11 +99,11 @@ class PortfolioMappingManager:
         """Update the Portfolio Performance group mapping for a sheet.
 
         Args:
-            sheet_id: Unique identifier for the Kubera sheet to update.
-            pp_group_name: Portfolio Performance group name to assign.
+            sheet_id (str): Unique identifier for the Kubera sheet to update.
+            pp_group_name (str): Portfolio Performance group name to assign.
 
         Returns:
-            True when the sheet was found and updated. False when not found.
+            bool: True when the sheet was found and updated. False when not found.
         """
         sheet = self.session.query(KuberaSheet).filter_by(sheet_id=sheet_id).first()
         if sheet:
@@ -115,11 +115,11 @@ class PortfolioMappingManager:
         """Update the Portfolio Performance account mapping for a section.
 
         Args:
-            section_id: Unique identifier for the Kubera section to update.
-            pp_account_name: Portfolio Performance account name to assign.
+            section_id (str): Unique identifier for the Kubera section to update.
+            pp_account_name (str): Portfolio Performance account name to assign.
 
         Returns:
-            True when the section was found and updated. False when not found.
+            bool: True when the section was found and updated. False when not found.
         """
         section = (
             self.session.query(KuberaSection).filter_by(section_id=section_id).first()
@@ -137,12 +137,12 @@ class PortfolioMappingManager:
         """Get Portfolio Performance group and account names for a Kubera sheet/section.
 
         Args:
-            sheet_id: Unique identifier for the Kubera sheet.
-            section_id: Unique identifier for the Kubera section.
+            sheet_id (str): Unique identifier for the Kubera sheet.
+            section_id (str): Unique identifier for the Kubera section.
 
         Returns:
-            Tuple of (pp_group_name, pp_account_name). Both elements are None
-            when no matching mapping exists.
+            tuple[str | None, str | None]: Tuple of (pp_group_name, pp_account_name).
+            Both elements are None when no matching mapping exists.
         """
         section = (
             self.session.query(KuberaSection)
@@ -161,7 +161,7 @@ class PortfolioMappingManager:
         """Get list of sheets without Portfolio Performance group mappings.
 
         Returns:
-            List of KuberaSheet instances where pp_group_name is None.
+            list[KuberaSheet]: List of KuberaSheet instances where pp_group_name is None.
         """
         return (
             self.session.query(KuberaSheet)
@@ -173,7 +173,7 @@ class PortfolioMappingManager:
         """Get list of sections without Portfolio Performance account mappings.
 
         Returns:
-            List of KuberaSection instances where pp_account_name is None.
+            list[KuberaSection]: List of KuberaSection instances where pp_account_name is None.
         """
         return (
             self.session.query(KuberaSection)
@@ -185,8 +185,8 @@ class PortfolioMappingManager:
         """Get summary of all current mappings.
 
         Returns:
-            Nested dict keyed by sheet name, where each value contains
-            pp_group and a sections sub-dict mapping section names to
+            dict[str, dict[str, Any]]: Nested dict keyed by sheet name, where each
+            value contains pp_group and a sections sub-dict mapping section names to
             their pp_account values.
         """
         mappings: dict[str, dict[str, Any]] = {}
@@ -216,11 +216,11 @@ class SecurityMatcher:
         """Match securities by ISIN (most reliable).
 
         Args:
-            pp_isin: ISIN from the Portfolio Performance security.
-            kubera_isin: ISIN from the Kubera holding.
+            pp_isin (str): ISIN from the Portfolio Performance security.
+            kubera_isin (str): ISIN from the Kubera holding.
 
         Returns:
-            True when both ISINs are non-empty and match case-insensitively.
+            bool: True when both ISINs are non-empty and match case-insensitively.
         """
         if not pp_isin or not kubera_isin:
             return False
@@ -231,11 +231,11 @@ class SecurityMatcher:
         """Match securities by ticker/symbol.
 
         Args:
-            pp_symbol: Ticker symbol from the Portfolio Performance security.
-            kubera_ticker: Ticker from the Kubera holding.
+            pp_symbol (str): Ticker symbol from the Portfolio Performance security.
+            kubera_ticker (str): Ticker from the Kubera holding.
 
         Returns:
-            True when both values are non-empty and match case-insensitively.
+            bool: True when both values are non-empty and match case-insensitively.
         """
         if not pp_symbol or not kubera_ticker:
             return False
@@ -246,12 +246,12 @@ class SecurityMatcher:
         """Match securities by name similarity (fuzzy matching).
 
         Args:
-            pp_name: Security name from Portfolio Performance.
-            kubera_name: Holding name from Kubera.
-            threshold: Minimum word-overlap ratio to consider a match. Defaults to 0.8.
+            pp_name (str): Security name from Portfolio Performance.
+            kubera_name (str): Holding name from Kubera.
+            threshold (float): Minimum word-overlap ratio to consider a match. Defaults to 0.8.
 
         Returns:
-            True when names match exactly, one contains the other, or word-overlap
+            bool: True when names match exactly, one contains the other, or word-overlap
             ratio meets the threshold. False when either name is empty or below threshold.
         """
         if not pp_name or not kubera_name:
@@ -290,13 +290,13 @@ class SecurityMatcher:
         """Find the best matching Kubera holding for a Portfolio Performance security.
 
         Args:
-            pp_security: Dict representing a Portfolio Performance security with
-                optional keys isin, symbol, and name.
-            kubera_holdings: List of Kubera holding dicts to search.
+            pp_security (dict[str, Any]): Dict representing a Portfolio Performance
+                security with optional keys isin, symbol, and name.
+            kubera_holdings (list[dict[str, Any]]): List of Kubera holding dicts to search.
 
         Returns:
-            The best-matching Kubera holding dict, or None when no match is found.
-            Tries ISIN first, then ticker, then name similarity.
+            dict[str, Any] | None: The best-matching Kubera holding dict, or None when
+            no match is found. Tries ISIN first, then ticker, then name similarity.
         """
 
         # Try ISIN match first (most reliable)
@@ -330,12 +330,13 @@ class SecurityMatcher:
         """Calculate absolute and percentage variance between two values.
 
         Args:
-            pp_value: Reference value from Portfolio Performance.
-            kubera_value: Comparison value from Kubera.
+            pp_value (float): Reference value from Portfolio Performance.
+            kubera_value (float): Comparison value from Kubera.
 
         Returns:
-            Tuple of (absolute_variance, percentage_variance). When pp_value is
-            zero, percentage_variance is 100.0 if kubera_value is non-zero, else 0.0.
+            tuple[float, float]: Tuple of (absolute_variance, percentage_variance).
+            When pp_value is zero, percentage_variance is 100.0 if kubera_value is
+            non-zero, else 0.0.
         """
         variance = kubera_value - pp_value
 

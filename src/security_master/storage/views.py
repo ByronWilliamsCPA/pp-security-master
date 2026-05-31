@@ -377,7 +377,7 @@ def create_all_views(engine: Engine) -> None:
     """Create all consolidation views in the database.
 
     Args:
-        engine: SQLAlchemy Engine connected to the target database.
+        engine (Engine): SQLAlchemy Engine connected to the target database.
     """
     with engine.connect() as conn:
         conn.execute(VIEW_HOLDINGS_BY_GROUP)
@@ -392,7 +392,7 @@ def drop_all_views(engine: Engine) -> None:
     """Drop all consolidation views from the database.
 
     Args:
-        engine: SQLAlchemy Engine connected to the target database.
+        engine (Engine): SQLAlchemy Engine connected to the target database.
     """
     drop_statements = [
         "DROP VIEW IF EXISTS v_holdings_by_group CASCADE;",

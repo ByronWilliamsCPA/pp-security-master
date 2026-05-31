@@ -18,9 +18,6 @@ async def example_1_reference_portfolio_benchmark():
     Use case: You have a "model portfolio" or "target allocation" that you want
     to use as a benchmark for other portfolios. This creates a single security
     that Portfolio Performance can use as a benchmark.
-
-    Returns:
-        The result.
     """
     print("=== Example 1: Reference Portfolio Benchmark ===")
 
@@ -54,9 +51,6 @@ async def example_2_custom_index_benchmark():
 
     Use case: You want a specific asset allocation (like 60/40 stocks/bonds)
     as a benchmark, but using specific ETFs or securities.
-
-    Returns:
-        The result.
     """
     print("\n=== Example 2: Custom Index Benchmark ===")
 
@@ -94,9 +88,6 @@ async def example_3_sector_benchmark():
 
     Use case: You want to benchmark against a specific sector or theme,
     like "Technology Stocks" or "ESG Funds".
-
-    Returns:
-        The result.
     """
     print("\n=== Example 3: Sector Benchmark ===")
 
@@ -175,9 +166,6 @@ async def example_5_portfolio_performance_integration():
     Example 5: How the benchmark integrates with Portfolio Performance
 
     This shows the complete workflow from benchmark creation to PP usage.
-
-    Returns:
-        The result.
     """
     print("\n=== Example 5: Portfolio Performance Integration ===")
 

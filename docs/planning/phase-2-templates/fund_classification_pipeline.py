@@ -106,13 +106,13 @@ class FundClassificationPipeline:
         Classify a single fund using the classification pipeline.
 
         Args:
-            symbol: Fund ticker symbol
-            name: Fund name
-            cusip: CUSIP identifier
-            isin: ISIN identifier
+            symbol (str): Fund ticker symbol.
+            name (str | None): Fund name.
+            cusip (str | None): CUSIP identifier.
+            isin (str | None): ISIN identifier.
 
         Returns:
-            Classification result with confidence and metadata
+            ClassificationResult: Classification result with confidence and metadata.
         """
         start_time = datetime.now()
         security_id = symbol or cusip or isin
@@ -189,10 +189,10 @@ class FundClassificationPipeline:
         Classify multiple securities in batch.
 
         Args:
-            securities: List of security dicts with symbol, name, cusip, isin keys
+            securities (list[dict[str, Any]]): List of security dicts with symbol, name, cusip, isin keys.
 
         Returns:
-            List of classification results
+            list[ClassificationResult]: List of classification results in input order.
         """
         self.logger.info(
             f"Starting batch classification of {len(securities)} securities",
@@ -271,13 +271,13 @@ class FundClassificationPipeline:
         """Classify using pp-portfolio-classifier.
 
         Args:
-            cusip: The cusip value.
-            isin: The isin value.
-            name: The name value.
-            symbol: The symbol value.
+            symbol (str | None): Ticker symbol.
+            name (str | None): Security name.
+            cusip (str | None): CUSIP identifier.
+            isin (str | None): ISIN identifier.
 
         Returns:
-            The result.
+            ClassificationResult: Result from pp-portfolio-classifier or error result.
         """
         security_id = symbol or cusip or isin or "unknown"
 
@@ -355,13 +355,13 @@ class FundClassificationPipeline:
         """Classify using OpenFIGI API.
 
         Args:
-            cusip: The cusip value.
-            isin: The isin value.
-            name: The name value.
-            symbol: The symbol value.
+            symbol (str | None): Ticker symbol.
+            name (str | None): Security name.
+            cusip (str | None): CUSIP identifier.
+            isin (str | None): ISIN identifier.
 
         Returns:
-            The result.
+            ClassificationResult: Result from OpenFIGI or error result.
         """
         security_id = symbol or cusip or isin or "unknown"
         start_time = datetime.now()
@@ -445,10 +445,10 @@ class FundClassificationPipeline:
         """Convert pp-portfolio-classifier result to SecurityClassification.
 
         Args:
-            pp_result: The pp result value.
+            pp_result (dict[str, Any]): Raw result dict from pp-portfolio-classifier.
 
         Returns:
-            The result.
+            SecurityClassification | None: Converted classification or None if data is insufficient.
         """
         # This will be implemented based on actual pp-portfolio-classifier output format
         classification_data = pp_result.get("classification", {})
@@ -470,10 +470,10 @@ class FundClassificationPipeline:
         """Convert OpenFIGI result to SecurityClassification.
 
         Args:
-            figi_result: The figi result value.
+            figi_result (dict[str, Any]): Raw result dict from OpenFIGI API.
 
         Returns:
-            The result.
+            SecurityClassification | None: Converted classification or None if data is insufficient.
         """
         return SecurityClassification(
             asset_class=figi_result.get("securityType", "Unknown"),
@@ -497,12 +497,12 @@ class FundClassificationPipeline:
         """Calculate confidence score for OpenFIGI result.
 
         Args:
-            name: The name value.
-            figi_result: The figi result value.
-            symbol: The symbol value.
+            figi_result (dict[str, Any]): Raw result dict from OpenFIGI API.
+            symbol (str | None): Ticker symbol used in the search.
+            name (str | None): Security name used in the search.
 
         Returns:
-            The result.
+            float: Confidence score between 0.0 and 1.0.
         """
         confidence = 0.6  # Base confidence for OpenFIGI
 
@@ -529,8 +529,8 @@ class FundClassificationPipeline:
         """Update classification statistics.
 
         Args:
-            result: The result value.
-            start_time: The start time value.
+            result (ClassificationResult): Completed classification result to record.
+            start_time (datetime): Timestamp when classification started.
         """
         self.classification_stats["total_classified"] += 1
 
@@ -549,7 +549,7 @@ class FundClassificationPipeline:
         """Get classification performance statistics.
 
         Returns:
-            The result.
+            dict[str, Any]: Statistics dict including rates for pp_classifier_success, openfigi_success, errors.
         """
         total = self.classification_stats["total_classified"]
         if total == 0:

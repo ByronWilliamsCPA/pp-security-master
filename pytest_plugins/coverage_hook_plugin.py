@@ -26,7 +26,7 @@ def pytest_configure(config: Any) -> None:
     """Called after command line options have been parsed.
 
     Args:
-        config: Pytest configuration object used to register markers and inspect CLI options.
+        config (Any): Pytest configuration object used to register markers and inspect CLI options.
     """
     # Register custom marker
     config.addinivalue_line(
@@ -53,7 +53,7 @@ def pytest_sessionfinish(session: Any) -> None:
     """Called after test run completion to trigger coverage reports.
 
     Args:
-        session: Pytest session object providing access to config and collected test counts.
+        session (Any): Pytest session object providing access to config and collected test counts.
     """
     # Only run if coverage was enabled and tests ran
     if not getattr(session.config, "_coverage_enabled", False):
@@ -100,8 +100,8 @@ def pytest_runtest_makereport(item: Any, call: Any) -> None:
     """Set coverage context based on test type for better tracking.
 
     Args:
-        item: Pytest test item whose file path determines the coverage context label.
-        call: Pytest call info object indicating which phase (setup, call, teardown) is executing.
+        item (Any): Pytest test item whose file path determines the coverage context label.
+        call (Any): Pytest call info object indicating which phase (setup, call, teardown) is executing.
     """
     if (
         call.when == "call"

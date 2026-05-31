@@ -63,11 +63,11 @@ class WellsFargoParser:
         """Parse Wells Fargo CSV file with comprehensive validation.
 
         Args:
-            created_by: The created by value.
-            file_path: The file path value.
+            file_path (Path): Path to the Wells Fargo CSV file to parse.
+            created_by (str): Username or system identifier for audit tracking.
 
         Returns:
-            The result.
+            WellsFargoParseResult: Parsed result containing valid, invalid, and duplicate transactions.
 
         Raises:
             Exception: If an error occurs.
@@ -134,8 +134,8 @@ class WellsFargoParser:
         """Parse CSV file content into transaction objects.
 
         Args:
-            result: The result value.
-            file_path: The file path value.
+            file_path (Path): Path to the CSV file to read.
+            result (WellsFargoParseResult): Parse result object to populate with transactions.
         """
 
         with open(file_path, encoding="utf-8") as csvfile:
@@ -175,10 +175,10 @@ class WellsFargoParser:
         """Clean and normalize CSV row data.
 
         Args:
-            row_data: The row data value.
+            row_data (dict[str, str]): Raw CSV row dict with string keys and values.
 
         Returns:
-            The result.
+            dict[str, any]: Cleaned row with type-converted values and stripped whitespace.
         """
         cleaned = {}
 
@@ -243,7 +243,7 @@ class WellsFargoParser:
         """Process parsed transactions for validation and deduplication.
 
         Args:
-            result: The result value.
+            result (WellsFargoParseResult): Parse result object to process in place.
         """
 
         # Detect duplicates within the file
@@ -270,10 +270,10 @@ class WellsFargoParser:
         """Create a unique signature for transaction deduplication.
 
         Args:
-            transaction: The transaction value.
+            transaction (WellsFargoTransaction): Transaction to generate a deduplication key for.
 
         Returns:
-            The result.
+            str: Pipe-delimited string combining key transaction fields.
         """
         signature_parts = [
             transaction.account_number,
@@ -289,7 +289,7 @@ class WellsFargoParser:
         """Apply business rule validations to transactions.
 
         Args:
-            result: The result value.
+            result (WellsFargoParseResult): Parse result object to validate in place.
         """
 
         validated_transactions = []
@@ -353,7 +353,7 @@ class WellsFargoParser:
         """Get list of supported Wells Fargo CSV columns.
 
         Returns:
-            The result.
+            list[str]: List of expected Wells Fargo CSV column header names.
         """
         return [
             "Account Number",

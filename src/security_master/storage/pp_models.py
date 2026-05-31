@@ -402,7 +402,7 @@ class PPSecurityPrice(Base):
         """Convert PP integer price to decimal.
 
         Returns:
-            Price as a Decimal value (PP integer divided by 100,000,000).
+            Decimal: Price as a Decimal value (PP integer divided by 100,000,000).
         """
         return Decimal(self.price_value) / Decimal(100000000)
 
@@ -411,7 +411,7 @@ class PPSecurityPrice(Base):
         """Set price from decimal value.
 
         Args:
-            value: Decimal price to store as a PP integer (multiplied by 100,000,000).
+            value (Decimal): Decimal price to store as a PP integer (multiplied by 100,000,000).
         """
         self.price_value = int(value * Decimal(100000000))
 

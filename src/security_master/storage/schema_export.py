@@ -17,7 +17,7 @@ def generate_postgres_ddl() -> str:
     """Generate PostgreSQL DDL statements from SQLAlchemy models.
 
     Returns:
-        DDL SQL string with all CREATE TABLE statements joined by blank lines.
+        str: DDL SQL string with all CREATE TABLE statements joined by blank lines.
     """
     ddl_statements: list[str] = []
 
@@ -38,7 +38,7 @@ def generate_mermaid_er_diagram() -> str:
     """Generate Mermaid ER diagram for VS Code preview.
 
     Returns:
-        Markdown-fenced Mermaid ER diagram string covering all schema tables.
+        str: Markdown-fenced Mermaid ER diagram string covering all schema tables.
     """
 
     return """# Security Master Database Schema
@@ -240,7 +240,7 @@ def generate_plantuml_er_diagram() -> str:
     """Generate PlantUML ER diagram for VS Code preview.
 
     Returns:
-        PlantUML diagram source string covering all schema tables and relationships.
+        str: PlantUML diagram source string covering all schema tables and relationships.
     """
 
     return """@startuml Security Master Database Schema
@@ -516,7 +516,7 @@ def generate_dbdiagram_schema() -> str:
     """Generate dbdiagram.io DBML format from SQLAlchemy models.
 
     Returns:
-        DBML schema string suitable for import into dbdiagram.io.
+        str: DBML schema string suitable for import into dbdiagram.io.
     """
 
     return """// Database Schema for Security Master Service

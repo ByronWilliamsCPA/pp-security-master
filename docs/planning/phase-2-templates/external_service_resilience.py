@@ -115,7 +115,7 @@ class CircuitBreaker:
         """Check if request can be executed.
 
         Returns:
-            The result.
+            bool: True when circuit is closed or half-open and ready to retry.
         """
         now = datetime.now()
 
@@ -198,9 +198,9 @@ class ServiceMonitor:
         """Register a service for monitoring.
 
         Args:
-            name: The name value.
-            health_check: The health check value.
-            fallback_handler: The fallback handler value.
+            name (str): Unique name identifier for the service.
+            health_check (Callable[[], Awaitable[HealthCheckResult]]): Async callable returning a health check result.
+            fallback_handler (Callable | None): Optional async callable to invoke when the service is unavailable.
         """
         self.services[name] = ServiceMetrics(name=name)
         self.circuit_breakers[name] = CircuitBreaker(name, self.config.circuit_breaker)
@@ -218,7 +218,7 @@ class ServiceMonitor:
         """Add alert handler for service issues.
 
         Args:
-            handler: The handler value.
+            handler (Callable[[str, ServiceMetrics], Awaitable[None]]): Async callable invoked when a service alert fires.
         """
         self.alert_handlers.append(handler)
 
@@ -231,12 +231,12 @@ class ServiceMonitor:
         """Execute operation with circuit breaker and fallback.
 
         Args:
-            fallback_value: The fallback value value.
-            operation: The operation value.
-            service_name: The service name value.
+            service_name (str): Name of the registered service to use.
+            operation (Callable[[], Awaitable[Any]]): Async callable to execute with resilience.
+            fallback_value (Any): Value to return if all attempts and fallback handler fail.
 
         Returns:
-            The result.
+            Any: Result of the operation, fallback handler, or fallback_value.
 
         Raises:
             ValueError: If an error occurs.
@@ -298,11 +298,11 @@ class ServiceMonitor:
         """Execute fallback handler or return fallback value.
 
         Args:
-            service_name: The service name value.
-            fallback_value: The fallback value value.
+            service_name (str): Name of the registered service whose fallback handler to invoke.
+            fallback_value (Any): Default value to return if no fallback handler is registered.
 
         Returns:
-            The result.
+            Any: Result from the fallback handler or fallback_value when no handler exists.
         """
         if service_name in self.fallback_handlers:
             try:
@@ -316,8 +316,8 @@ class ServiceMonitor:
         """Record successful request metrics.
 
         Args:
-            service_name: The service name value.
-            response_time_ms: The response time ms value.
+            service_name (str): Name of the service that succeeded.
+            response_time_ms (float): Elapsed time for the request in milliseconds.
         """
         metrics = self.services[service_name]
         metrics.total_requests += 1
@@ -338,8 +338,8 @@ class ServiceMonitor:
         """Record failed request metrics.
 
         Args:
-            service_name: The service name value.
-            error: The error value.
+            service_name (str): Name of the service that failed.
+            error (str): Error message describing the failure.
         """
         metrics = self.services[service_name]
         metrics.total_requests += 1
@@ -418,8 +418,8 @@ class ServiceMonitor:
         """Run health check for a single service.
 
         Args:
-            service_name: The service name value.
-            health_check: The health check value.
+            service_name (str): Name of the service being checked.
+            health_check (Callable[[], Awaitable[HealthCheckResult]]): Async callable that performs the health check.
         """
         try:
             start_time = time.time()
@@ -463,10 +463,10 @@ class ServiceMonitor:
         """Get current status of a service.
 
         Args:
-            service_name: The service name value.
+            service_name (str): Name of the service to look up.
 
         Returns:
-            The result.
+            ServiceMetrics | None: Current metrics for the service, or None if not registered.
         """
         return self.services.get(service_name)
 
@@ -474,7 +474,7 @@ class ServiceMonitor:
         """Get status of all services.
 
         Returns:
-            The result.
+            dict[str, ServiceMetrics]: Copy of the service metrics dict keyed by service name.
         """
         return self.services.copy()
 
@@ -482,7 +482,7 @@ class ServiceMonitor:
         """Get overall system health summary.
 
         Returns:
-            The result.
+            dict[str, Any]: Summary dict with overall_status, service counts, and per-service details.
         """
         if not self.services:
             return {
@@ -538,7 +538,7 @@ async def openfigi_health_check() -> HealthCheckResult:
     """Health check for OpenFIGI API.
 
     Returns:
-        The result.
+        HealthCheckResult: Health check result indicating HEALTHY, DEGRADED, or UNHEALTHY.
     """
     try:
         start_time = time.time()
@@ -580,7 +580,7 @@ async def pp_classifier_health_check() -> HealthCheckResult:
     """Health check for pp-portfolio-classifier.
 
     Returns:
-        The result.
+        HealthCheckResult: Health check result indicating HEALTHY or UNHEALTHY.
     """
     try:
         start_time = time.time()
@@ -620,7 +620,7 @@ async def database_health_check() -> HealthCheckResult:
     """Health check for database connection.
 
     Returns:
-        The result.
+        HealthCheckResult: Health check result indicating HEALTHY or UNHEALTHY.
     """
     try:
         start_time = time.time()
@@ -654,8 +654,8 @@ async def log_alert_handler(service_name: str, metrics: ServiceMetrics):
     """Log-based alert handler.
 
     Args:
-        service_name: The service name value.
-        metrics: The metrics value.
+        service_name (str): Name of the service that triggered the alert.
+        metrics (ServiceMetrics): Current metrics for the alerting service.
     """
     logger = logging.getLogger("ServiceAlert")
     logger.error(
@@ -670,8 +670,8 @@ async def webhook_alert_handler(service_name: str, metrics: ServiceMetrics):
     """Webhook-based alert handler.
 
     Args:
-        service_name: The service name value.
-        metrics: The metrics value.
+        service_name (str): Name of the service that triggered the alert.
+        metrics (ServiceMetrics): Current metrics for the alerting service.
     """
     # This would send alerts to external monitoring systems
     alert_data = {
