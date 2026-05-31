@@ -82,7 +82,7 @@ ipython = ">=9.0.0"
 ipdb = ">=0.13.13"
 pip-audit = "^2.9.0"
 isort = "^6.0.1"
-darglint = ">=1.8.1"
+pydoclint = ">=0.8.4"
 interrogate = ">=1.7.0"
 commitizen = ">=3.0.0"
 
@@ -300,3 +300,13 @@ version_scheme = "semver"
 version_provider = "pep621"
 tag_format = "v$version"
 update_changelog_on_bump = false
+
+[tool.pydoclint]
+style = "google"
+exclude = '\.git|tests/|scripts/|benchmarks/|tools/|noxfile\.py|\.claude/'
+arg-type-hints-in-docstring = true
+arg-type-hints-in-signature = true
+skip-checking-raises = false
+require-return-section-when-returning-nothing = false
+require-return-section-when-returning-values = false
+require-yield-section-when-yielding-values = false

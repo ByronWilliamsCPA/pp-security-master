@@ -42,6 +42,16 @@ repos:
       - id: markdownlint
         args: [--fix, --config, .markdownlint.yml]
 
+  # pydoclint: docstring argument/return validation
+  - repo: https://github.com/jsh9/pydoclint
+    rev: 88d83c94156c5e51a09938e77019f2c58e92ab58  # 0.8.4
+    hooks:
+      - id: pydoclint
+        args: ["--config=pyproject.toml"]
+        types: [python]
+        stages: [pre-commit]
+        exclude: ^(tests|scripts|benchmarks|tools)/
+
   # ── Local hooks (need the project venv via poetry run) ────────────────────
 
   - repo: local
@@ -63,13 +73,6 @@ repos:
         args: [-r, src, -ll, -c, pyproject.toml]
         types: [python]
         pass_filenames: false
-
-      # darglint: docstring argument validation
-      - id: darglint
-        name: darglint
-        language: system
-        entry: poetry run darglint
-        types: [python]
 
       # interrogate: docstring coverage for src/ (70% threshold)
       - id: interrogate-src
