@@ -132,7 +132,7 @@ jobs:
 
       - name: Set up test environment
         run: |
-          echo "DATABASE_URL=postgresql://test_user:test_password@localhost:5432/test_db" >> $GITHUB_ENV
+          echo "DATABASE_URL=postgresql://test_user:test_password@localhost:5432/test_db" >> "$GITHUB_ENV"
 
       - name: Run integration tests with coverage
         run: |

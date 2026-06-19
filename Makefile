@@ -45,7 +45,7 @@ lint: ## Run linting checks
 	$(UV) run ruff format --check .
 	$(UV) run ruff check .
 	$(UV) run basedpyright
-	markdownlint **/*.md
+	markdownlint --config .markdownlint.yml **/*.md
 	yamllint .
 	$(UV) run darglint src/
 	$(UV) run interrogate src/ --fail-under 70
