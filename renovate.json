@@ -8,5 +8,26 @@
     "github-actions",
     "pre-commit",
     "pip_requirements"
+  ],
+  "packageRules": [
+    {
+      "description": "Pin GitHub Actions to commit SHA",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "pinDigests": true
+    },
+    {
+      "description": "Track org workflow floating v1 tag for SHA pin updates",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchPackagePatterns": [
+        "ByronWilliamsCPA/.github",
+        "williaby/.github"
+      ],
+      "versioning": "semver",
+      "followTag": "v1"
+    }
   ]
 }
