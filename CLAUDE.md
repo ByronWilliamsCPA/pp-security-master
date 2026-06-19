@@ -31,8 +31,8 @@ Additional directories:
 ### Development Setup
 
 ```bash
-# Install dependencies (assumes Poetry is available)
-poetry install
+# Install dependencies (assumes uv is available)
+uv sync
 
 # Set up environment
 cp .env.example .env
@@ -43,49 +43,49 @@ cp .env.example .env
 
 ```bash
 # Run Alembic migrations (when implemented)
-poetry run alembic upgrade head
+uv run alembic upgrade head
 
 # Test database connection
-poetry run python -m pytest tests/test_db_connection.py -v
+uv run python -m pytest tests/test_db_connection.py -v
 ```
 
 ### Code Quality
 
 ```bash
 # Format and lint
-poetry run ruff format --check .
-poetry run ruff check --fix .
+uv run ruff format --check .
+uv run ruff check --fix .
 markdownlint --config .markdownlint.yml **/*.md
 yamllint .
 
 # Run tests with coverage
-poetry run pytest -v --cov=src --cov-report=html --cov-report=term-missing
+uv run pytest -v --cov=src --cov-report=html --cov-report=term-missing
 
 # Security scanning
-poetry run bandit -r src
-poetry run pip-audit
+uv run bandit -r src
+uv run pip-audit
 
 # Run pre-commit on all files
-poetry run pre-commit run --all-files
+uv run pre-commit run --all-files
 # Or via nox (also installs hooks)
-poetry run nox -s pre_commit
+uv run nox -s pre_commit
 ```
 
 ### Task Automation
 
 ```bash
 # Use Nox for automated testing and linting
-poetry run nox                    # Run all tests
-poetry run nox -s fast           # Fast development cycle
-poetry run nox -s unit           # Unit tests only
-poetry run nox -s lint           # Linting and formatting
-poetry run nox -s security       # Security checks
-poetry run nox -s type_check     # basedpyright type checking
+uv run nox                    # Run all tests
+uv run nox -s fast           # Fast development cycle
+uv run nox -s unit           # Unit tests only
+uv run nox -s lint           # Linting and formatting
+uv run nox -s security       # Security checks
+uv run nox -s type_check     # basedpyright type checking
 
 # Specific component tests
-poetry run nox -s db_tests        # Database tests
-poetry run nox -s classifier_tests # Classification engine tests
-poetry run nox -s extractor_tests  # Broker file parser tests
+uv run nox -s db_tests        # Database tests
+uv run nox -s classifier_tests # Classification engine tests
+uv run nox -s extractor_tests  # Broker file parser tests
 
 # Make-based automation
 make help                         # View available Make targets
@@ -154,9 +154,9 @@ pytest -m "security"           # Security assertion tests
 
 ## Package Overrides
 
-- **Dependency manager**: Using `poetry` instead of `uv` -- this project
-  predates the `uv` canonical standard. No migration required until a future
-  major rework.
+- **Dependency manager**: Using `uv` with a PEP 621 `[project]` table and PEP 735
+  `[dependency-groups]`. The build backend is `hatchling`. Use `uv sync` to install
+  and `uv run <cmd>` to execute tooling inside the project environment.
 
 ## Global Rule References
 

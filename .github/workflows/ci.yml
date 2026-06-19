@@ -20,50 +20,23 @@ concurrency:
 
 env:
   CI_ENVIRONMENT: true
-  POETRY_VERSION: 2.1.2
-  POETRY_CACHE_DIR: ~/.cache/pypoetry
-  POETRY_VENV_IN_PROJECT: true
 
 jobs:
   setup:
     name: Setup Dependencies
     runs-on: ubuntu-latest
     timeout-minutes: 8
-    outputs:
-      poetry-hash: ${{ steps.cache-key.outputs.poetry-hash }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
-      - name: Generate cache keys
-        id: cache-key
-        run: |
-          echo "poetry-hash=${{ hashFiles('**/poetry.lock') }}" >> $GITHUB_OUTPUT
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38  # v5.4.0
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
+          enable-cache: true
           python-version: '3.11'
 
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry config virtualenvs.create true
-          poetry config virtualenvs.in-project true
-
-      - name: Cache Poetry dependencies
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684  # v4.2.3
-        with:
-          path: .venv
-          key: poetry-deps-${{ runner.os }}-${{ steps.cache-key.outputs.poetry-hash }}
-          restore-keys: |
-            poetry-deps-${{ runner.os }}-
-
       - name: Install dependencies
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry install --sync --no-interaction
+        run: uv sync --frozen
 
   unit-tests:
     name: Unit Tests (Python ${{ matrix.python-version }})
@@ -77,38 +50,21 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38  # v5.4.0
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
+          enable-cache: true
           python-version: ${{ matrix.python-version }}
 
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry config virtualenvs.in-project true
-
-      - name: Restore dependency cache
-        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684  # v4.2.3
-        with:
-          path: .venv
-          key: poetry-deps-${{ runner.os }}-${{ needs.setup.outputs.poetry-hash }}
-          restore-keys: |
-            poetry-deps-${{ runner.os }}-
-
       - name: Install dependencies
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry install --sync --no-interaction
+        run: uv sync --frozen
 
       - name: Run unit tests with coverage
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           # --cov-fail-under=0: Phase 3 has no source tests yet; override the 80% pyproject.toml
           # threshold so the job fails only on actual test failures, not coverage gaps.
           # Remove once Phase 1-2 source tests are merged and coverage reaches 80%.
-          poetry run pytest -v \
+          uv run --frozen pytest -v \
             --cov=src \
             --cov-report=xml:coverage-unit-${{ matrix.python-version }}.xml \
             --cov-report=term-missing \
@@ -165,41 +121,24 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38  # v5.4.0
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
+          enable-cache: true
           python-version: ${{ matrix.python-version }}
 
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry config virtualenvs.in-project true
-
-      - name: Restore dependency cache
-        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684  # v4.2.3
-        with:
-          path: .venv
-          key: poetry-deps-${{ runner.os }}-${{ needs.setup.outputs.poetry-hash }}
-          restore-keys: |
-            poetry-deps-${{ runner.os }}-
-
       - name: Install dependencies
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry install --sync --no-interaction
+        run: uv sync --frozen
 
       - name: Set up test environment
         run: |
-          echo "DATABASE_URL=postgresql://test_user:test_password@localhost:5432/test_db" >> $GITHUB_ENV
+          echo "DATABASE_URL=postgresql://test_user:test_password@localhost:5432/test_db" >> "$GITHUB_ENV"
 
       - name: Run integration tests with coverage
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           # --cov-fail-under=0: same as unit tests -- pre-existing coverage gap, override until
           # Phase 1-2 source tests are merged.
-          poetry run pytest -v \
+          uv run --frozen pytest -v \
             --cov=src \
             --cov-report=xml:coverage-integration-${{ matrix.python-version }}.xml \
             --cov-report=term-missing \
@@ -238,41 +177,22 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38  # v5.4.0
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
+          enable-cache: true
           python-version: '3.11'
 
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry config virtualenvs.in-project true
-
-      - name: Restore dependency cache
-        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684  # v4.2.3
-        with:
-          path: .venv
-          key: poetry-deps-${{ runner.os }}-${{ needs.setup.outputs.poetry-hash }}
-          restore-keys: |
-            poetry-deps-${{ runner.os }}-
-
       - name: Install dependencies
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry install --sync --no-interaction
+        run: uv sync --frozen
 
       - name: Run type checking
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry run basedpyright
+        run: uv run --frozen basedpyright
 
       - name: Run linting
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry run ruff format --check .
-          poetry run ruff check .
+          uv run --frozen ruff format --check .
+          uv run --frozen ruff check .
 
       - name: Run markdown and YAML linting
         run: |
@@ -289,42 +209,25 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38  # v5.4.0
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
+          enable-cache: true
           python-version: '3.11'
 
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry config virtualenvs.in-project true
-
-      - name: Restore dependency cache
-        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684  # v4.2.3
-        with:
-          path: .venv
-          key: poetry-deps-${{ runner.os }}-${{ needs.setup.outputs.poetry-hash }}
-          restore-keys: |
-            poetry-deps-${{ runner.os }}-
-
       - name: Install dependencies
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry install --sync --no-interaction
+        run: uv sync --frozen
 
       - name: Run security checks
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           echo "🔒 Running security scans"
           # CVE ignores: all four are documented and accepted in docs/known-vulnerabilities.md
-          poetry run pip-audit \
+          uv run --frozen pip-audit \
             --ignore-vuln GHSA-4xh5-x5gv-qwph \
             --ignore-vuln GHSA-6vgw-5pg2-w6jp \
             --ignore-vuln GHSA-58qw-9mgm-455v \
             --ignore-vuln PYSEC-2022-42969
-          poetry run bandit -r src -ll
+          uv run --frozen bandit -r src -ll
 
   ci-success:
     name: CI Success
