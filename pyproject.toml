@@ -26,9 +26,9 @@ requires-python = ">=3.11,<3.15"
 dynamic = ["dependencies"]
 
 [project.urls]
-homepage = "https://github.com/williaby/pp-security-master"
-repository = "https://github.com/williaby/pp-security-master"
-documentation = "https://github.com/williaby/pp-security-master/wiki"
+homepage = "https://github.com/ByronWilliamsCPA/pp-security-master"
+repository = "https://github.com/ByronWilliamsCPA/pp-security-master"
+documentation = "https://github.com/ByronWilliamsCPA/pp-security-master/wiki"
 
 # Poetry-specific configuration
 [tool.poetry]

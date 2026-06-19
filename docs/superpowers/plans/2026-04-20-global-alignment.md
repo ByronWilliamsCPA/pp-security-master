@@ -141,7 +141,7 @@ Expected: both files show more than 5 lines.
 git add SECURITY.md CONTRIBUTING.md
 git commit -m "docs: add SECURITY.md and CONTRIBUTING.md from org templates
 
-Required OpenSSF files. Adapted from williaby/.github org templates.
+Required OpenSSF files. Adapted from ByronWilliamsCPA/.github org templates.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 ```
@@ -1427,7 +1427,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 
 ### Task 18: Rewrite ci.yml as thin caller to org reusable workflow
 
-The current `ci.yml` is 340 lines of duplicated setup. Replace with a thin caller that delegates to `williaby/.github/.github/workflows/python-ci.yml@main`.
+The current `ci.yml` is 340 lines of duplicated setup. Replace with a thin caller that delegates to `ByronWilliamsCPA/.github/.github/workflows/python-ci.yml@main`.
 
 **Files:**
 
@@ -1461,7 +1461,7 @@ concurrency:
 
 jobs:
   ci:
-    uses: williaby/.github/.github/workflows/python-ci.yml@main
+    uses: ByronWilliamsCPA/.github/.github/workflows/python-ci.yml@main
     with:
       python-version: "3.11"
       python-versions-pr: '["3.11", "3.12"]'
@@ -1533,7 +1533,7 @@ on:
 
 jobs:
   security:
-    uses: williaby/.github/.github/workflows/python-security-analysis.yml@main
+    uses: ByronWilliamsCPA/.github/.github/workflows/python-security-analysis.yml@main
     with:
       source-directory: src
 ```
@@ -1555,9 +1555,9 @@ on:
 
 jobs:
   sonarcloud:
-    uses: williaby/.github/.github/workflows/python-sonarcloud.yml@main
+    uses: ByronWilliamsCPA/.github/.github/workflows/python-sonarcloud.yml@main
     with:
-      sonar-organization: williaby
+      sonar-organization: ByronWilliamsCPA
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 ```
@@ -1576,7 +1576,7 @@ on:
 
 jobs:
   coverage:
-    uses: williaby/.github/.github/workflows/python-qlty-coverage.yml@main
+    uses: ByronWilliamsCPA/.github/.github/workflows/python-qlty-coverage.yml@main
     with:
       coverage-artifact-name: coverage-report
     secrets:

@@ -172,7 +172,7 @@ with a thin caller to the org reusable workflow, and add security/SonarCloud/cov
 - [ ] `codeql.yml`: SHAs pinned, `harden-runner` added (Task 15)
 - [ ] `scorecard.yml`: SHAs pinned (Task 16)
 - [ ] `renovate-auto-merge.yml`: SHAs pinned (Task 17)
-- [ ] `ci.yml`: replaced with thin caller to `williaby/.github/.github/workflows/python-ci.yml@main` (Task 18)
+- [ ] `ci.yml`: replaced with thin caller to `ByronWilliamsCPA/.github/.github/workflows/python-ci.yml@main` (Task 18)
 - [ ] `.github/workflows/security.yml` created (Task 19)
 - [ ] `.github/workflows/sonarcloud.yml` created (Task 19)
 - [ ] `.github/workflows/coverage.yml` created (Task 19)
