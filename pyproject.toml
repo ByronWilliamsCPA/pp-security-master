@@ -48,9 +48,9 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = "https://github.com/williaby/pp-security-master"
-repository = "https://github.com/williaby/pp-security-master"
-documentation = "https://github.com/williaby/pp-security-master/wiki"
+homepage = "https://github.com/ByronWilliamsCPA/pp-security-master"
+repository = "https://github.com/ByronWilliamsCPA/pp-security-master"
+documentation = "https://github.com/ByronWilliamsCPA/pp-security-master/wiki"
 
 [dependency-groups]
 dev = [

@@ -353,14 +353,14 @@ Additional wiring:
 ### Migrate to org-level reusable workflows
 
 The current `ci.yml` is 340 lines of inline setup duplicated across every job.
-Replace with thin caller workflows that delegate to `williaby/.github`:
+Replace with thin caller workflows that delegate to `ByronWilliamsCPA/.github`:
 
 **`.github/workflows/ci.yml`** -- replaces the current inline file:
 
 ```yaml
 jobs:
   ci:
-    uses: williaby/.github/.github/workflows/python-ci.yml@main
+    uses: ByronWilliamsCPA/.github/.github/workflows/python-ci.yml@main
     with:
       python-versions: '["3.11", "3.12"]'
     secrets:
@@ -372,7 +372,7 @@ jobs:
 ```yaml
 jobs:
   security:
-    uses: williaby/.github/.github/workflows/python-security-analysis.yml@main
+    uses: ByronWilliamsCPA/.github/.github/workflows/python-security-analysis.yml@main
 ```
 
 Note: this workflow is now blocking (no `continue-on-error`).
@@ -382,7 +382,7 @@ Note: this workflow is now blocking (no `continue-on-error`).
 ```yaml
 jobs:
   sonarcloud:
-    uses: williaby/.github/.github/workflows/python-sonarcloud.yml@main
+    uses: ByronWilliamsCPA/.github/.github/workflows/python-sonarcloud.yml@main
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 ```
@@ -392,7 +392,7 @@ jobs:
 ```yaml
 jobs:
   coverage:
-    uses: williaby/.github/.github/workflows/python-qlty-coverage.yml@main
+    uses: ByronWilliamsCPA/.github/.github/workflows/python-qlty-coverage.yml@main
     secrets:
       QLTY_COVERAGE_TOKEN: ${{ secrets.QLTY_COVERAGE_TOKEN }}
 ```

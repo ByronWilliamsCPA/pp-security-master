@@ -3,7 +3,7 @@
 version = 1
 SPDX-PackageName = "pp-security-master"
 SPDX-PackageSupplier = "Byron Williams"
-SPDX-PackageDownloadLocation = "https://github.com/williaby/pp-security-master"
+SPDX-PackageDownloadLocation = "https://github.com/ByronWilliamsCPA/pp-security-master"
 
 [[annotations]]
 path = ["**"]

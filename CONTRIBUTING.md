@@ -16,9 +16,9 @@ help improve our code, documentation, and community processes.
 3. **Fork and Clone**
 
    ```bash
-   git clone https://github.com/williaby/pp-security-master.git
+   git clone https://github.com/ByronWilliamsCPA/pp-security-master.git
    cd pp-security-master
-   git remote add upstream https://github.com/williaby/pp-security-master.git
+   git remote add upstream https://github.com/ByronWilliamsCPA/pp-security-master.git
    ```
 
 ## Pull Request Guidelines
