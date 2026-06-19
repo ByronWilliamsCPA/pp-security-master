@@ -11,13 +11,16 @@
 
 The pp-security-master repository has 13 Architecture Decision Records (ADR-001 through ADR-013)
 describing a comprehensive financial data platform, but no dedicated architecture documentation.
-The existing `schema_exports/` directory contains a single PlantUML ER diagram. All other
-architectural knowledge lives only in the ADRs and in `CLAUDE.md`.
+The existing `schema_exports/` directory contains generated schema artifacts in four formats
+(SQL, DBML, Mermaid, and PlantUML). All other architectural knowledge lives only in the ADRs
+and in `CLAUDE.md`.
 
-The current codebase implements roughly 10% of the full system vision: the `storage/` module
-(models, mappers, validators, views, schema export), the `patch/` module (PP XML export), and
-a stub `cli.py`. The `extractor/`, `classifier/`, FastAPI service, Redis cache, background workers,
-observability stack, and analytics engine are all planned but not yet built.
+The current codebase implements the data-persistence foundation: the `storage/` module
+(SQLAlchemy models for the securities-master, Kubera, institution-transaction, and Portfolio
+Performance backup tables, plus mappers, validators, SQL views, and schema export), the `patch/`
+module (PP XML export), and a stub `cli.py`. The `extractor/`, `classifier/`, FastAPI service,
+Redis cache, background workers, observability stack, and analytics engine are all planned but
+not yet built.
 
 This spec defines the architecture documentation set that will serve as the canonical living
 reference for the full system, capturing both what is built today and the design intent for
@@ -183,25 +186,26 @@ include the full vision schema grouped by domain.
 
 **Narrative covers:**
 
-*Current tables (4):*
+*Current tables:*
 
-- `securities_master`: core security reference with GICS, MSCI, TRBC, BRX-Plus taxonomy fields,
-  pricing data, data quality score (0.00–1.00).
+- `securities_master`: core security reference with GICS, MSCI, and BRX-Plus taxonomy fields,
+  pricing data, data quality score (0.00-1.00).
 - `kubera_sheets` / `kubera_sections` / `kubera_holdings`: hierarchical Kubera position data
   mapping to PP groups and accounts.
 - `holding_comparisons`: PP vs. Kubera variance analysis with configurable tolerance thresholds.
+- `transactions_wells_fargo`, `transactions_interactive_brokers`, `transactions_altoira`,
+  `transactions_kubera`, `transactions_consolidated`: institution-specific transaction imports
+  and the consolidated transaction table (models defined; the extractors that populate them are
+  planned, see `04-data-flows.md`).
+- `pp_client_config`, `pp_accounts`, `pp_portfolios`, `pp_account_transactions`,
+  `pp_portfolio_transactions`, `pp_transaction_units`, `pp_security_prices`, `pp_settings`,
+  `pp_bookmarks`: Portfolio Performance backup restoration tables (ADR-002).
+- Consolidated views: `v_holdings_by_group`, `v_holdings_by_account`, `v_transactions_for_pp_export`.
 
 *Planned table groups (stubs):*
 
-- `transactions_wells_fargo`, `transactions_interactive_brokers`, `transactions_altoira`,
-  `transactions_kubera`: institution-specific transaction imports.
-- `pp_client_config`, `pp_accounts`, `pp_portfolios`, `pp_account_transactions`,
-  `pp_portfolio_transactions`, `pp_transaction_units`, `pp_security_prices`, `pp_settings`,
-  `pp_bookmarks`: full Portfolio Performance backup restoration tables (ADR-002).
 - `reporting_metrics`, `reconciliation_runs`, `duplicate_candidates`: data quality
   tracking tables.
-- Consolidated views: `v_holdings_by_group`, `v_holdings_by_account`,
-  `v_transactions_consolidated`.
 
 **ADR cross-references:** ADR-001, ADR-002, ADR-004, ADR-012.
 
@@ -277,7 +281,7 @@ cascade with associated APIs, rate limits, and cost per tier.
 - Circuit breaker pattern for external API fault tolerance.
 - Multi-level caching strategy: in-memory (Redis, short TTL), database (90-day TTL),
   file (1-year retention).
-- Cost management target: $200–500/month external API budget.
+- Cost management target: $200-500/month external API budget.
 - External library integration: pp-portfolio-classifier and ppxml2db as git subtrees (ADR-008).
 
 **ADR cross-references:** ADR-003, ADR-005, ADR-008.
