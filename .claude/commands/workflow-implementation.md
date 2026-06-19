@@ -112,10 +112,10 @@ validate_and_setup_branch "$PHASE" "$ISSUE"
    setup_dependency_management() {
        echo "📦 Setting up dependency management..."
 
-       # Validate poetry.lock is current
-       if ! poetry check; then
-           echo "🔄 Updating poetry.lock..."
-           poetry lock
+       # Validate uv.lock is current
+       if ! uv lock --check; then
+           echo "🔄 Updating uv.lock..."
+           uv lock
        fi
 
        # Generate requirements files immediately
@@ -126,8 +126,8 @@ validate_and_setup_branch "$PHASE" "$ISSUE"
 
            # Commit requirements updates if needed
            if ! git diff --quiet requirements*.txt; then
-               git add requirements*.txt poetry.lock
-               git commit -m "chore(deps): update requirements from poetry.lock"
+               git add requirements*.txt uv.lock
+               git commit -m "chore(deps): update requirements from uv.lock"
            fi
        fi
 
@@ -158,7 +158,7 @@ validate_and_setup_branch "$PHASE" "$ISSUE"
 
 4. **Follow Coding Standards** from CLAUDE.md:
    - Maintain naming conventions (snake_case, kebab-case, PascalCase)
-   - Follow Python standards (Black 88 chars, Ruff, MyPy)
+   - Follow Python standards (Ruff format 88 chars, Ruff, BasedPyright)
    - Ensure 80% minimum test coverage
    - Create atomic knowledge chunks for documentation
 
@@ -182,9 +182,9 @@ validate_and_setup_branch "$PHASE" "$ISSUE"
            case "$file" in
                *.py)
                    echo "  🐍 Checking Python: $file"
-                   poetry run black --check "$file" || return 1
-                   poetry run ruff check "$file" || return 1
-                   poetry run mypy "$file" || return 1
+                   uv run ruff format --check "$file" || return 1
+                   uv run ruff check "$file" || return 1
+                   uv run basedpyright "$file" || return 1
                    ;;
                *.md)
                    echo "  📝 Checking Markdown: $file"
@@ -210,7 +210,7 @@ validate_and_setup_branch "$PHASE" "$ISSUE"
    # Run coverage check after each implementation milestone
    check_coverage() {
        echo "📊 Checking test coverage..."
-       COVERAGE=$(poetry run pytest --cov=src --cov-report=term-missing | grep "TOTAL" | awk '{print $4}' | sed 's/%//')
+       COVERAGE=$(uv run pytest --cov=src --cov-report=term-missing | grep "TOTAL" | awk '{print $4}' | sed 's/%//')
 
        if [[ $COVERAGE -lt 80 ]]; then
            echo "❌ Coverage below 80%: ${COVERAGE}%"
@@ -243,17 +243,17 @@ validate_and_setup_branch "$PHASE" "$ISSUE"
 
        # Run the same checks that GitHub Actions will run
        echo "1. Pre-commit hooks..."
-       poetry run pre-commit run --all-files || return 1
+       uv run pre-commit run --all-files || return 1
 
        echo "2. Security scans..."
-       poetry run safety check || echo "⚠️  Security issues found"
-       poetry run bandit -r src || return 1
+       uv run pip-audit || echo "⚠️  Security issues found"
+       uv run bandit -r src || return 1
 
        echo "3. Test suite..."
-       poetry run pytest -v --cov=src --cov-report=term-missing || return 1
+       uv run pytest -v --cov=src --cov-report=term-missing || return 1
 
        echo "4. Dependency validation..."
-       poetry check || return 1
+       uv lock --check || return 1
 
        echo "✅ All GitHub Actions checks would pass"
    }
@@ -309,15 +309,15 @@ validate_and_setup_branch "$PHASE" "$ISSUE"
 # Check file-specific linting
 markdownlint **/*.md  # For markdown changes
 yamllint **/*.{yml,yaml}  # For YAML changes
-poetry run black --check .  # For Python changes
-poetry run ruff check .  # For Python changes
-poetry run mypy src  # For Python changes
+uv run ruff format --check .  # For Python changes
+uv run ruff check .  # For Python changes
+uv run basedpyright src  # For Python changes
 ```
 
 ### Before Each Major Milestone
 
 1. **Acceptance Criteria Check**: Verify progress against original criteria
-2. **Security Scan**: Run Safety and Bandit checks
+2. **Security Scan**: Run pip-audit and Bandit checks
 3. **Test Coverage**: Ensure 80% minimum coverage maintained
 4. **Documentation**: Update knowledge files as needed
 

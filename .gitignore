@@ -109,5 +109,16 @@ Thumbs.db
 .qlty/*
 !.qlty/qlty.toml
 
-# Superpowers brainstorm session files
+# Tooling caches and benchmark output
+.ruff_cache/
+.benchmarks/
+
+# Compliance audit reports (local-only; see repo-compliance skill)
+docs/compliance-reports/
+
+# Generated requirements variant (produced by scripts/generate_requirements.sh;
+# only requirements.txt and requirements-dev.txt are committed)
+requirements-hashed.txt
+
+# Superpowers brainstorm session files (ephemeral server pid/log/content)
 .superpowers/

@@ -1,0 +1,20 @@
+# SonarCloud Analysis
+# Calls the org-level reusable SonarCloud workflow.
+name: SonarCloud
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Top-level read-only; write permissions not required for SonarCloud analysis.
+permissions:
+  contents: read
+
+jobs:
+  sonarcloud:
+    name: SonarCloud Analysis
+    uses: ByronWilliamsCPA/.github/.github/workflows/python-sonarcloud.yml@58cb18497bb2e54a22c6adb47bdaca4d7f615eee  # v2.2.0
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

@@ -27,6 +27,6 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: Python version, OS, Poetry version
+      description: Python version, OS, uv version
     validations:
       required: false

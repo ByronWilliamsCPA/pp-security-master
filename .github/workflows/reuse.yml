@@ -25,6 +25,7 @@ jobs:
   reuse:
     name: Check REUSE Compliance
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Harden the runner
         uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
@@ -53,6 +54,7 @@ jobs:
   validate-licenses:
     name: Validate License Files
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Harden the runner
         uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
