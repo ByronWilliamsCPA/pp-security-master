@@ -19,7 +19,7 @@ repos:
     hooks:
       - id: detect-secrets
         args: [--baseline, .secrets.baseline]
-        exclude: poetry.lock
+        exclude: uv.lock
 
   # commitizen: enforce conventional commit message format
   - repo: https://github.com/commitizen-tools/commitizen
@@ -42,7 +42,7 @@ repos:
       - id: markdownlint
         args: [--fix, --config, .markdownlint.yml]
 
-  # ── Local hooks (need the project venv via poetry run) ────────────────────
+  # ── Local hooks (need the project venv via uv run) ────────────────────────
 
   - repo: local
     hooks:
@@ -50,7 +50,7 @@ repos:
       - id: basedpyright
         name: basedpyright
         language: system
-        entry: poetry run basedpyright
+        entry: uv run basedpyright
         types: [python]
         pass_filenames: false
         always_run: true
@@ -59,7 +59,7 @@ repos:
       - id: bandit
         name: bandit
         language: system
-        entry: poetry run bandit
+        entry: uv run bandit
         args: [-r, src, -ll, -c, pyproject.toml]
         types: [python]
         pass_filenames: false
@@ -68,14 +68,14 @@ repos:
       - id: darglint
         name: darglint
         language: system
-        entry: poetry run darglint
+        entry: uv run darglint
         types: [python]
 
       # interrogate: docstring coverage for src/ (70% threshold)
       - id: interrogate-src
         name: interrogate (src)
         language: system
-        entry: poetry run interrogate
+        entry: uv run interrogate
         args: [--fail-under=70, src/]
         types: [python]
         pass_filenames: false
@@ -84,7 +84,7 @@ repos:
       - id: interrogate-scripts
         name: interrogate (scripts)
         language: system
-        entry: poetry run interrogate
+        entry: uv run interrogate
         args: [--fail-under=85, scripts/]
         types: [python]
         pass_filenames: false

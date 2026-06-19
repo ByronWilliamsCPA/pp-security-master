@@ -23,10 +23,10 @@
 
 ## Testing
 <!-- Describe the tests that you ran to verify your changes -->
-- [ ] Tests pass locally with `poetry run pytest`
-- [ ] Code follows the style guidelines (`poetry run black .` and `poetry run ruff check .`)
-- [ ] Type checking passes (`poetry run mypy src`)
-- [ ] Security scans pass (`poetry run safety check` and `poetry run bandit -r src`)
+- [ ] Tests pass locally with `uv run pytest`
+- [ ] Code follows the style guidelines (`uv run ruff format .` and `uv run ruff check .`)
+- [ ] Type checking passes (`uv run basedpyright`)
+- [ ] Security scans pass (`uv run pip-audit` and `uv run bandit -r src`)
 - [ ] Database migrations tested (if applicable)
 - [ ] Classification accuracy validated (if applicable)
 

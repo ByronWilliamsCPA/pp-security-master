@@ -5,30 +5,31 @@ set -euo pipefail
 
 echo "🔐 Generating requirements.txt with cryptographic hashes..."
 
-# Export requirements with hashes
-poetry export \
-    --format=requirements.txt \
-    --output=requirements.txt \
-    --without-hashes \
-    --without-urls
+# Export production requirements (no dev group)
+uv export \
+    --frozen \
+    --no-dev \
+    --no-emit-project \
+    --no-hashes \
+    --output-file requirements.txt
 
 echo "✅ Base requirements.txt generated"
 
 # Generate requirements with dev dependencies
-poetry export \
-    --format=requirements.txt \
-    --output=requirements-dev.txt \
-    --with=dev \
-    --without-hashes \
-    --without-urls
+uv export \
+    --frozen \
+    --no-emit-project \
+    --no-hashes \
+    --output-file requirements-dev.txt
 
 echo "✅ Development requirements.txt generated"
 
 # Generate requirements with hashes for production security
-poetry export \
-    --format=requirements.txt \
-    --output=requirements-hashed.txt \
-    --with-hashes
+uv export \
+    --frozen \
+    --no-dev \
+    --no-emit-project \
+    --output-file requirements-hashed.txt
 
 echo "✅ Hashed requirements for production generated"
 

@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Migrate the project from Poetry to uv with a PEP 621 `[project]` table and PEP 735 `[dependency-groups]`; convert the build backend to `hatchling` with `[tool.hatch.build.targets.wheel]` packages set to `src/security_master`, port all dependencies and dev dependencies, replace `poetry.lock` with `uv.lock`, and switch CI, the Makefile, pre-commit local hooks, `scripts/generate_requirements.sh`, and docs to `uv sync` / `uv run`
+- Add `renovate.json` extending `config:recommended` with `enabledManagers` set to `pep621`, `github-actions`, `pre-commit`, and `pip_requirements`
 - Replace `mypy` with `basedpyright` in strict mode across `pyproject.toml`, `noxfile.py`, `Makefile`, and `.github/workflows/ci.yml`
 - Remove `[tool.mypy]`, `[[tool.mypy.overrides]]`, and `[tool.pydantic-mypy]` config blocks from `pyproject.toml`; add `[tool.basedpyright]` block with `typeCheckingMode = "strict"`
 - Replace `datetime.utcnow` (deprecated) with `lambda: datetime.now(UTC).replace(tzinfo=None)` across all model `server_default` fields in `models.py`, `pp_models.py`, and `transaction_models.py`

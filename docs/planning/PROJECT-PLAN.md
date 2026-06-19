@@ -287,7 +287,7 @@ add security, SonarCloud, and coverage workflows.
 - `scorecard.yml`: SHAs pinned
 - `renovate-auto-merge.yml`: SHAs pinned
 - `ci.yml`: replaced with thin caller to
-  `williaby/.github/.github/workflows/python-ci.yml@main`
+  `ByronWilliamsCPA/.github/.github/workflows/python-ci.yml@main`
 - `.github/workflows/security.yml` created
 - `.github/workflows/sonarcloud.yml` created
 - `.github/workflows/coverage.yml` created
