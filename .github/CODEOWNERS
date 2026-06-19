@@ -1,2 +1,6 @@
-# Default owner for all files
-* @ByronWilliamsCPA
+# Default owner for all files.
+# Kept as the user @williaby: GitHub CODEOWNERS accepts only users or
+# @org/team, not a bare org handle. The ByronWilliamsCPA org has no team yet,
+# so the maintainer user is the only valid owner. Switch to
+# @ByronWilliamsCPA/<team> once a team exists.
+* @williaby
