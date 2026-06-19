@@ -59,7 +59,7 @@ pexpect==4.9.0 ; python_version >= "3.11" and python_version < "3.15" and sys_pl
 pip-api==0.0.34 ; python_version >= "3.11" and python_version < "3.15"
 pip-audit==2.9.0 ; python_version >= "3.11" and python_version < "3.15"
 pip-requirements-parser==32.0.1 ; python_version >= "3.11" and python_version < "3.15"
-pip==25.2 ; python_version >= "3.11" and python_version < "3.15"
+pip==26.1.2 ; python_version >= "3.11" and python_version < "3.15"
 platformdirs==4.3.8 ; python_version >= "3.11" and python_version < "3.15"
 pluggy==1.6.0 ; python_version >= "3.11" and python_version < "3.15"
 pre-commit==4.3.0 ; python_version >= "3.11" and python_version < "3.15"
