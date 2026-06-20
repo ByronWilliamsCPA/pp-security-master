@@ -14,6 +14,32 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.dialects.postgresql import UUID as _PG_UUID
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.orm import Session, sessionmaker
+
+
+@compiles(_PG_UUID, "sqlite")
+def _compile_pg_uuid_for_sqlite(
+    element: object, compiler: object, **_kw: object
+) -> str:
+    """Render Postgres ``UUID`` columns as ``CHAR(32)`` on the SQLite dialect.
+
+    The ``pp_*`` tables use ``postgresql.UUID`` which has no native SQLite
+    compilation. This shim lets the storage and patch service layers run against
+    an in-memory SQLite database in the unit tier, so DB-backed code is covered
+    without provisioning PostgreSQL. Production still uses the native PG type.
+
+    Args:
+        element: The ``UUID`` type element being compiled (unused).
+        compiler: The active DDL compiler (unused).
+        **_kw: Additional compiler keyword arguments; ignored.
+
+    Returns:
+        The SQLite column type string ``"CHAR(32)"``.
+    """
+    return "CHAR(32)"
 
 
 def pytest_runtest_setup(item) -> None:
@@ -53,6 +79,36 @@ def pytest_runtest_setup(item) -> None:
 # =============================================================================
 # DATABASE FIXTURES
 # =============================================================================
+
+
+@pytest.fixture
+def sqlite_session() -> Generator[Session, None, None]:
+    """Yield a Session bound to a fresh in-memory SQLite database.
+
+    All ORM tables, including the Postgres-typed ``pp_*`` tables, are created via
+    the module-level UUID compile shim so the storage and patch service layers
+    can be exercised in the unit tier without a live PostgreSQL server. The
+    engine and its schema are discarded on teardown.
+
+    Yields:
+        An open SQLAlchemy Session with the full schema created.
+    """
+    # Imported lazily so table classes register on Base.metadata before
+    # create_all; pp_models and transaction_models are otherwise unused here.
+    from security_master.storage import (  # noqa: F401
+        pp_models,
+        transaction_models,
+    )
+    from security_master.storage.models import Base
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    session = sessionmaker(bind=engine)()
+    try:
+        yield session
+    finally:
+        session.close()
+        engine.dispose()
 
 
 @pytest.fixture(scope="session")
@@ -439,6 +495,30 @@ def ibkr_isin2secid_sample(sample_data_dir: Path) -> dict[str, str]:
     """
     path = sample_data_dir / "isin2secid_sample.json"
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+@pytest.fixture
+def pp_empty_client_sample_file(sample_data_dir: Path) -> Path:
+    """Provide a fresh, empty Portfolio Performance native client file.
+
+    A USD-base ``<client>`` file at schema ``version 69`` with one account and
+    one portfolio (both named "IRA"), no securities or transactions. It is the
+    empty-state counterpart to the populated ``BruceandSueWilliams_sample.xml``,
+    and the round-trip target for both the PP XML extractor and the patch
+    writer. It exercises the format details that break naive writers: empty
+    collections rendered as self-closing tags, the ``../../../`` relative-path
+    reference scheme, and the default ``attributeTypes`` block.
+
+    The UUIDs and ``updatedAt`` timestamps are frozen to deterministic synthetic
+    values so the file is byte-stable across test runs.
+
+    Args:
+        sample_data_dir: Fixture providing the ``sample_data`` directory path.
+
+    Returns:
+        Path to the empty Portfolio Performance client sample XML file.
+    """
+    return sample_data_dir / "PP_empty_USD_sample.xml"
 
 
 # =============================================================================
