@@ -17,6 +17,7 @@ on:
       - main
       - master
       - develop
+  merge_group:
 
 permissions:
   contents: read
