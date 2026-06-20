@@ -1,3 +1,5 @@
+"""Portfolio Performance mapping managers and security-matching utilities for Kubera data."""
+
 from typing import Any
 
 from sqlalchemy.orm import Session

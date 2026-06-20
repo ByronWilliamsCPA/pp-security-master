@@ -9,6 +9,25 @@ PYTHON_VERSIONS = ["3.11", "3.12", "3.13"]
 SRC_LOCATIONS = ["src", "tests", "noxfile.py"]
 
 
+def install(session):
+    """Install the project and dev dependencies into the session virtualenv.
+
+    Uses uv as the dependency manager. UV_PROJECT_ENVIRONMENT points uv at the
+    nox session virtualenv so installed tools resolve when invoked via
+    session.run.
+
+    Args:
+        session: Nox session providing install and run helpers.
+    """
+    session.run_install(
+        "uv",
+        "sync",
+        "--frozen",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+        external=True,
+    )
+
+
 @nox.session(python=PYTHON_VERSIONS)
 def tests(session):
     """Run the full test suite (all layers).
@@ -22,7 +41,7 @@ def tests(session):
         "--cov-report=term-missing",
         "--cov-fail-under=80",
     ]
-    session.run("poetry", "install", "--with", "dev", external=True)
+    install(session)
     session.run("pytest", *args)
 
 
@@ -38,7 +57,7 @@ def unit(session):
     Args:
         session: Nox session providing install and run helpers.
     """
-    session.run("poetry", "install", "--with", "dev", external=True)
+    install(session)
     session.run(
         "pytest",
         "-m",
@@ -59,7 +78,7 @@ def component(session):
     Args:
         session: Nox session providing install and run helpers.
     """
-    session.run("poetry", "install", "--with", "dev", external=True)
+    install(session)
     session.run(
         "pytest",
         "-m",
@@ -79,7 +98,7 @@ def db_tests(session):
     Args:
         session: Nox session providing install and run helpers.
     """
-    session.run("poetry", "install", "--with", "dev", external=True)
+    install(session)
     session.run(
         "pytest",
         "-m",
@@ -99,7 +118,7 @@ def classifier_tests(session):
     Args:
         session: Nox session providing install and run helpers.
     """
-    session.run("poetry", "install", "--with", "dev", external=True)
+    install(session)
     session.run(
         "pytest",
         "-m",
@@ -119,7 +138,7 @@ def extractor_tests(session):
     Args:
         session: Nox session providing install and run helpers.
     """
-    session.run("poetry", "install", "--with", "dev", external=True)
+    install(session)
     session.run(
         "pytest",
         "-m",
@@ -139,7 +158,7 @@ def fast(session):
     Args:
         session: Nox session providing install and run helpers.
     """
-    session.run("poetry", "install", "--with", "dev", external=True)
+    install(session)
     session.run(
         "pytest",
         "-m",
@@ -160,7 +179,7 @@ def security_tests(session):
     Args:
         session: Nox session providing install and run helpers.
     """
-    session.run("poetry", "install", "--with", "dev", external=True)
+    install(session)
     session.run(
         "pytest",
         "-m",
@@ -177,7 +196,7 @@ def integration(session):
     Args:
         session: Nox session providing install and run helpers.
     """
-    session.run("poetry", "install", "--with", "dev", external=True)
+    install(session)
     session.run(
         "pytest",
         "-m",
@@ -196,7 +215,7 @@ def e2e(session):
     Args:
         session: Nox session providing install and run helpers.
     """
-    session.run("poetry", "install", "--with", "dev", external=True)
+    install(session)
     session.run(
         "pytest",
         "-m",
@@ -214,7 +233,7 @@ def perf(session):
     Args:
         session: Nox session providing install and run helpers.
     """
-    session.run("poetry", "install", "--with", "dev", external=True)
+    install(session)
     session.run(
         "pytest",
         "-m",
@@ -234,7 +253,7 @@ def lint(session):
         session: Nox session providing install and run helpers.
     """
     args = session.posargs or SRC_LOCATIONS
-    session.run("poetry", "install", "--with", "dev", external=True)
+    install(session)
     session.run("ruff", "format", "--check", *args)
     session.run("ruff", "check", *args)
 
@@ -247,8 +266,8 @@ def lint(session):
     session.run("yamllint", ".", external=True)
 
     # Docstring quality gates
-    session.run("darglint", "src/")
-    session.run("interrogate", "src/", "--fail-under", "70")
+    session.run("pydoclint", "src/")
+    session.run("interrogate", "src/", "--fail-under", "80")
     session.run("interrogate", "scripts/", "--fail-under", "85")
 
 
@@ -259,7 +278,7 @@ def type_check(session):
     Args:
         session: Nox session providing install and run helpers.
     """
-    session.run("poetry", "install", "--with", "dev", external=True)
+    install(session)
     session.run("basedpyright")
 
 
@@ -270,7 +289,7 @@ def security(session):
     Args:
         session: Nox session providing install and run helpers.
     """
-    session.run("poetry", "install", "--with", "dev", external=True)
+    install(session)
 
     # Run bandit for code security issues
     session.run("bandit", "-r", "src", "-ll")
@@ -298,7 +317,7 @@ def format_code(session):
         session: Nox session providing install and run helpers.
     """
     args = session.posargs or SRC_LOCATIONS
-    session.run("poetry", "install", "--with", "dev", external=True)
+    install(session)
     session.run("ruff", "format", *args)
     session.run("ruff", "check", "--fix", *args)
 
@@ -310,7 +329,7 @@ def pre_commit(session):
     Args:
         session: Nox session providing install and run helpers.
     """
-    session.run("poetry", "install", "--with", "dev", external=True)
+    install(session)
     session.run("pre-commit", "install", external=True)
     session.run("pre-commit", "install", "--hook-type", "commit-msg", external=True)
     session.run("pre-commit", "run", "--all-files", external=True)

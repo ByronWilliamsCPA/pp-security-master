@@ -26,6 +26,13 @@ def generate_postgres_ddl() -> str:
         *_args: object,
         **_kwargs: object,
     ) -> None:
+        """Compile one DDL element and append its SQL text to ddl_statements.
+
+        Args:
+            sql: The DDL element emitted by SQLAlchemy's mock engine.
+            *_args: Additional positional arguments passed by the mock engine; ignored.
+            **_kwargs: Additional keyword arguments passed by the mock engine; ignored.
+        """
         ddl_statements.append(str(sql.compile(dialect=engine.dialect)))
 
     engine = create_mock_engine("postgresql://", _collect_ddl)

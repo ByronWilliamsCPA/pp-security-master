@@ -1,3 +1,5 @@
+"""SQLAlchemy ORM models for the Security Master, Kubera integration, and holdings comparison tables."""
+
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
@@ -6,10 +8,12 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
-    pass
+    """Declarative base class shared by all ORM-mapped models in this package."""
 
 
 class SecurityMaster(Base):
+    """Row in the securities_master table: a single Portfolio Performance security with full taxonomy."""
+
     __tablename__ = "securities_master"
 
     # Primary identification
@@ -124,6 +128,8 @@ class SecurityMaster(Base):
 
 
 class KuberaSheet(Base):
+    """Row in the kubera_sheets table: a top-level Kubera account sheet mapped to a Portfolio Performance group."""
+
     __tablename__ = "kubera_sheets"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -166,6 +172,8 @@ class KuberaSheet(Base):
 
 
 class KuberaSection(Base):
+    """Row in the kubera_sections table: a Kubera account section within a sheet, mapped to a Portfolio Performance account."""
+
     __tablename__ = "kubera_sections"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -218,6 +226,8 @@ class KuberaSection(Base):
 
 
 class KuberaHolding(Base):
+    """Row in the kubera_holdings table: a single security position imported from a Kubera snapshot."""
+
     __tablename__ = "kubera_holdings"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -363,6 +373,8 @@ class KuberaHolding(Base):
 
 
 class HoldingComparison(Base):
+    """Row in the holding_comparisons table: variance analysis record comparing a Portfolio Performance holding against its Kubera counterpart."""
+
     __tablename__ = "holding_comparisons"
 
     id: Mapped[int] = mapped_column(primary_key=True)
