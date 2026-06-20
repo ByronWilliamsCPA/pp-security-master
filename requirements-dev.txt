@@ -82,7 +82,7 @@ execnet==2.1.2
 executing==2.2.1
     # via stack-data
 faker==40.19.1
-filelock==3.29.0
+filelock==3.29.3
     # via
     #   cachecontrol
     #   python-discovery
