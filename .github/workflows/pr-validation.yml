@@ -19,6 +19,7 @@ jobs:
   title-check:
     name: PR Title Format
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       pull-requests: read
     steps:
@@ -45,6 +46,7 @@ jobs:
   body-check:
     name: PR Body Non-Empty
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       pull-requests: read
     steps:
@@ -70,6 +72,7 @@ jobs:
   pr-validation-gate:
     name: PR Validation Gate
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: [title-check, body-check]
     if: always()
     steps:

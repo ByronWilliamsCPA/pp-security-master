@@ -42,6 +42,26 @@ repos:
       - id: markdownlint
         args: [--fix, --config, .markdownlint.yml]
 
+  # pydoclint: docstring formatting validation
+  - repo: https://github.com/jsh9/pydoclint
+    rev: da69fbd1c05ff6f4ec46bf9be17a27e06601f076  # frozen: v0.8.6  # pragma: allowlist secret
+    hooks:
+      - id: pydoclint
+        args: [--config=pyproject.toml, src/, scripts/]
+        types: [python]
+        # Scope to the explicit src/ and scripts/ paths above; do not let
+        # pre-commit append the staged file list (which would pull in tests/).
+        pass_filenames: false
+
+  # trufflehog: secret scanning (staged files only, fail-closed)
+  - repo: https://github.com/trufflesecurity/trufflehog
+    rev: 30d5bb91af1a771378349dbbb0c82129392acf70  # frozen: v3.95.6  # pragma: allowlist secret
+    hooks:
+      - id: trufflehog
+        entry: bash -c 'git diff --cached -z --name-only --diff-filter=d 2>/dev/null | tr "\0" "\n" | grep -v "^CHANGELOG\.md$" | grep -v "^\.secrets\.baseline$" | grep -v "^$" | tr "\n" "\0" | xargs -0 -r trufflehog filesystem --fail --no-update'
+        pass_filenames: false
+        stages: [pre-commit]
+
   # ── Local hooks (need the project venv via uv run) ────────────────────────
 
   - repo: local
@@ -64,19 +84,13 @@ repos:
         types: [python]
         pass_filenames: false
 
-      # darglint: docstring argument validation
-      - id: darglint
-        name: darglint
-        language: system
-        entry: uv run darglint
-        types: [python]
 
-      # interrogate: docstring coverage for src/ (70% threshold)
+      # interrogate: docstring coverage for src/ (80% threshold)
       - id: interrogate-src
         name: interrogate (src)
         language: system
         entry: uv run interrogate
-        args: [--fail-under=70, src/]
+        args: [--fail-under=80, src/]
         types: [python]
         pass_filenames: false
 

@@ -1,3 +1,5 @@
+"""Database engine and session factory setup for the Security Master PostgreSQL store."""
+
 import os
 from collections.abc import Callable, Generator
 

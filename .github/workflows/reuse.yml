@@ -5,13 +5,13 @@
 # Documentation: https://reuse.software/
 name: REUSE Compliance
 
+# This job is a required status check in branch protection. It must run on
+# every pull_request so it always reports a conclusion; a `paths` filter would
+# silently skip the job on PRs that touch no matching file (for example,
+# dependency bumps that only change root files), leaving the required check
+# stuck at "Expected, waiting for status" and blocking the merge.
 on:
   pull_request:
-    paths:
-      - "**/*"
-      - "REUSE.toml"
-      - "LICENSES/**"
-      - ".github/workflows/reuse.yml"
   push:
     branches:
       - main
@@ -25,6 +25,7 @@ jobs:
   reuse:
     name: Check REUSE Compliance
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Harden the runner
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
@@ -53,6 +54,7 @@ jobs:
   validate-licenses:
     name: Validate License Files
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Harden the runner
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4

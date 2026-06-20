@@ -1,3 +1,4 @@
+# TODO(CI-001): migrate to org python-ci.yml reusable workflow
 name: CI
 
 on:
@@ -8,6 +9,7 @@ on:
   push:
     branches:
       - main
+  merge_group:
 
 permissions:
   contents: read
@@ -27,6 +29,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411  # v2.19.4
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
 
       - name: Install uv
@@ -48,6 +55,11 @@ jobs:
         python-version: ["3.11", "3.12", "3.13"]
       fail-fast: false
     steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411  # v2.19.4
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
 
       - name: Install uv
@@ -106,7 +118,7 @@ jobs:
       fail-fast: false
     services:
       postgres:
-        image: postgres:17@sha256:2203e6282d9e7de7c24d7da234e2a744fb325df366a3fd8ed940e8abbee39527
+        image: postgres:17
         env:
           POSTGRES_PASSWORD: test_password
           POSTGRES_USER: test_user
@@ -119,6 +131,11 @@ jobs:
         ports:
           - 5432:5432
     steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411  # v2.19.4
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
 
       - name: Install uv
@@ -175,6 +192,11 @@ jobs:
     timeout-minutes: 10
     needs: setup
     steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411  # v2.19.4
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
 
       - name: Install uv
@@ -207,6 +229,11 @@ jobs:
     timeout-minutes: 10
     needs: setup
     steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411  # v2.19.4
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
 
       - name: Install uv
@@ -220,7 +247,7 @@ jobs:
 
       - name: Run security checks
         run: |
-          echo "🔒 Running security scans"
+          echo "Running security scans"
           # CVE ignores: all four are documented and accepted in docs/known-vulnerabilities.md
           uv run --frozen pip-audit \
             --ignore-vuln GHSA-4xh5-x5gv-qwph \
@@ -232,9 +259,15 @@ jobs:
   ci-success:
     name: CI Success
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: [setup, unit-tests, integration-tests, quality-checks, security-scan]
     if: always()
     steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411  # v2.19.4
+        with:
+          egress-policy: audit
+
       - name: Check results
         run: |
           if [[ "${{ needs.setup.result }}" == "success" && \
@@ -242,9 +275,9 @@ jobs:
                 "${{ needs.integration-tests.result }}" == "success" && \
                 "${{ needs.quality-checks.result }}" == "success" && \
                 "${{ needs.security-scan.result }}" == "success" ]]; then
-            echo "✅ CI pipeline passed successfully"
+            echo "CI pipeline passed successfully"
           else
-            echo "❌ CI pipeline failed"
+            echo "CI pipeline failed"
             echo "setup: ${{ needs.setup.result }}"
             echo "unit-tests: ${{ needs.unit-tests.result }}"
             echo "integration-tests: ${{ needs.integration-tests.result }}"

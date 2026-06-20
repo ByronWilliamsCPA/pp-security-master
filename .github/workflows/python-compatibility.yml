@@ -35,14 +35,22 @@ permissions:
 jobs:
   compatibility:
     name: Python Compatibility Matrix
-    uses: ByronWilliamsCPA/.github/.github/workflows/python-compatibility.yml@58cb18497bb2e54a22c6adb47bdaca4d7f615eee  # main
+    uses: ByronWilliamsCPA/.github/.github/workflows/python-compatibility.yml@58cb18497bb2e54a22c6adb47bdaca4d7f615eee  # v2.2.0
     with:
       python-versions: '["3.11", "3.12", "3.13"]'
       operating-systems: '["ubuntu-latest"]'
       include-macos: true
       include-windows: true
       source-directory: 'src'
-      test-command: 'pytest tests/ -v --tb=short -x --ignore=tests/integration --ignore=tests/load -m "not slow and not integration"'
+      # Exclude integration/slow tests by path, not by `-m "not slow and not integration"`:
+      # the reusable workflow expands $TEST_COMMAND unquoted, so a space-containing marker
+      # expression is word-split (pytest then treats "slow" as a path). tests/test_db_connection.py
+      # holds the only integration-marked tests outside the ignored dirs, and no slow-marked
+      # tests exist, so path exclusion is scope-equivalent and survives the unquoted expansion.
+      test-command: 'pytest tests/ -v --tb=short -x --ignore=tests/integration --ignore=tests/load --ignore=tests/test_db_connection.py'
       coverage-report: false
       fail-fast: false
       timeout-minutes: 30
+      # This project uses the hatchling build backend, so the editable project
+      # itself must be built; opt out of the reusable workflow's default --no-build.
+      no-build: false

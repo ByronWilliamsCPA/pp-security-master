@@ -23,7 +23,7 @@ jobs:
   upload-coverage:
     name: Upload Coverage to Qlty
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
-    uses: ByronWilliamsCPA/.github/.github/workflows/python-qlty-coverage.yml@58cb18497bb2e54a22c6adb47bdaca4d7f615eee # main
+    uses: ByronWilliamsCPA/.github/.github/workflows/python-qlty-coverage.yml@58cb18497bb2e54a22c6adb47bdaca4d7f615eee  # v2.2.0
     with:
       coverage-artifact-name: coverage-reports
       coverage-file-path: coverage.xml

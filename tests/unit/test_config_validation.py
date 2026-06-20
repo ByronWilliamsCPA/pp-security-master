@@ -73,7 +73,7 @@ def test_invalid_inputs_fixture(invalid_isin_inputs):
         isinstance(invalid_isin_inputs, str)
         and len(invalid_isin_inputs) >= 2
         and invalid_isin_inputs[:2].isalpha()
-        and invalid_isin_inputs[:2] not in ["XX"]
+        and invalid_isin_inputs[:2] != "XX"
     )  # XX is not a valid country code
 
     # At least one of these should be false for invalid inputs
