@@ -75,6 +75,26 @@ Per the verified taxonomy decision guide:
   public-domain) plus the SIC -> NAICS -> GICS-sector concordance. FMP and Yahoo
   sector fields are personal-use / user-configured only, never bundled.
 
+**Validation (2026-06-20).** The GICS structure-versus-assignment distinction was
+verified empirically, closing open item #4 of the decision guide:
+
+- Portfolio Performance's own source (`industry-gics.properties` in
+  `buchen/portfolio`) ships only the GICS category hierarchy (`label` and
+  `description` entries keyed by GICS code), sourced from MSCI's freely-published
+  GICS Methodology PDF, with no per-security assignments. PP is therefore a
+  concrete open-source precedent that the GICS *structure* is safe to redistribute.
+- This project's committed `taxonomies/industries-gics*.json` ship names and
+  numeric codes only (no MSCI descriptive prose, no assignments), which is more
+  conservative than PP.
+- Three legally distinct artifacts share the "GICS" name: the framework (names
+  plus code hierarchy, safe as facts/labels), MSCI's descriptive prose (higher
+  exposure, do not copy), and the company-assignment database (GICS Direct, never
+  redistribute). Only the third is the licensed product whose terms this ADR
+  enforces; "cannot use GICS" was too broad.
+- This is risk validation, not legal advice; a high-stakes determination still
+  warrants counsel, but the remaining open legal item is CFI/SIX (decision guide),
+  not GICS structure.
+
 ### 4. Mechanism is constrained by both asset class and legal posture
 
 - **Crypto** classification is the user's own scheme (BTC / ETH / Diversified),
@@ -107,9 +127,10 @@ Per the verified taxonomy decision guide:
 <!-- RAD markers -->
 - `#CRITICAL` (security/financial: licensing): shipping GICS or TRBC assignment
   data in the repository is a redistribution-license violation.
-  `#VERIFY` keep all bundled taxonomy files to framework labels only; route any
-  GICS-sector *assignment* through user-local entry; add a CI check that no
-  committed `taxonomies/` or seed file contains identifier-to-licensed-sector rows.
+  `#VERIFY` keep all bundled taxonomy files to framework labels and codes only;
+  never copy MSCI sub-industry descriptive prose; route any GICS-sector
+  *assignment* through user-local entry; add a CI check that no committed
+  `taxonomies/` or seed file contains identifier-to-licensed-sector rows.
 - `#ASSUME` (external resource): the CFI code list is freely redistributable based
   on ISO externalization intent, but SIX attaches no named open-data license.
   `#VERIFY` obtain written redistribution confirmation from `office@cfi-iso.org`
