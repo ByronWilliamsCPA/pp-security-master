@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Reassess `docs/known-vulnerabilities.md` (review date 2026-06-19, next due 2026-08-18): confirm `uv run pip-audit` reports no known vulnerabilities after the `msgpack` 1.2.1 / `pydantic-settings` 2.14.2 patches (GHSA-6v7p-g79w-8964, GHSA-4xgf-cpjx-pc3j); refresh the four pip/py advisories, which are no longer surfaced by pip-audit and remain documented as accepted tooling/transitive exceptions
 - SHA-pin all GitHub Actions tags across ci.yml, codeql.yml,
   renovate-auto-merge.yml, and scorecard.yml to immutable commit SHAs
   (actions/checkout v4.2.2, actions/setup-python v5.4.0,

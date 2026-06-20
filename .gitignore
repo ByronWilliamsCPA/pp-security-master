@@ -122,3 +122,6 @@ requirements-hashed.txt
 
 # Superpowers brainstorm session files (ephemeral server pid/log/content)
 .superpowers/
+
+# SonarLint IDE-local analysis state
+.sonarlint/
