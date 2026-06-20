@@ -97,7 +97,7 @@ httpx==0.27.2
     # via pp-security-master
 humanize==4.15.0
     # via nox
-hypothesis==6.155.0
+hypothesis==6.155.2
 identify==2.6.19
     # via pre-commit
 idna==3.17
