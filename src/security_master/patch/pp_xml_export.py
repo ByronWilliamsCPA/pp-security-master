@@ -5,21 +5,20 @@ Generates valid PP XML backup files that can restore a complete PP instance.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    # stdlib has complete type stubs; defusedxml.ElementTree re-exports the same API
-    import xml.etree.ElementTree as ET  # nosec B405  # nosemgrep: python.lang.security.use-defused-xml.use-defused-xml
-
-    from sqlalchemy.orm import Session
-else:
-    import defusedxml.ElementTree as ET  # noqa: N817  # safe parser at runtime
-
+# Build XML with the stdlib ElementTree: defusedxml intentionally omits the
+# writer API (Element/SubElement/tostring), and constructing a document is not a
+# parse-side security risk. Untrusted/parsed XML is handled with defusedxml below.
+import xml.etree.ElementTree as ET  # nosec B405
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import defusedxml
+import defusedxml.ElementTree as defused_ET  # safe parser for input
 import defusedxml.minidom as defused_minidom
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 from security_master.storage.models import SecurityMaster
 from security_master.storage.pp_models import (
@@ -544,7 +543,7 @@ class PPXMLExportService:
         """
         try:
             # Use defusedxml for safe parsing to validate the generated output
-            root = ET.fromstring(xml_content)
+            root = defused_ET.fromstring(xml_content)
 
             return {
                 "securities": len(root.findall(".//security")),

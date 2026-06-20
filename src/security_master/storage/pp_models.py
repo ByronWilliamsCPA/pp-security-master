@@ -9,6 +9,7 @@ from typing import Optional
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Date,
     DateTime,
@@ -240,6 +241,12 @@ class PPAccountTransaction(Base):
         "PPTransactionUnit",
         foreign_keys="[PPTransactionUnit.transaction_id]",
         primaryjoin="and_(PPAccountTransaction.id == PPTransactionUnit.transaction_id, PPTransactionUnit.transaction_type == 'ACCOUNT')",
+        # viewonly: PPTransactionUnit.transaction_id is a soft-polymorphic key
+        # shared with PPPortfolioTransaction.units (disambiguated only by
+        # transaction_type), not a real FK. These navigations are read-only;
+        # units are written explicitly. Without viewonly, the two overlapping
+        # relationships fail mapper configuration.
+        viewonly=True,
     )
 
     def __repr__(self) -> str:
@@ -321,6 +328,9 @@ class PPPortfolioTransaction(Base):
         "PPTransactionUnit",
         foreign_keys="[PPTransactionUnit.transaction_id]",
         primaryjoin="and_(PPPortfolioTransaction.id == PPTransactionUnit.transaction_id, PPTransactionUnit.transaction_type == 'PORTFOLIO')",
+        # See the matching note on PPAccountTransaction.units: read-only
+        # navigation over a soft-polymorphic key, viewonly resolves the overlap.
+        viewonly=True,
     )
 
     def __repr__(self) -> str:
@@ -373,10 +383,12 @@ class PPSecurityPrice(Base):
 
     # Price data
     price_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    # PP stores prices as value * 100000000, so a ~$26 price is ~2.6e9, which
+    # overflows a 32-bit INTEGER. BigInteger (INT8) is required.
     price_value: Mapped[int] = mapped_column(
-        Integer,
+        BigInteger,
         nullable=False,
-    )  # PP stores as integer (multiply by 100000000)
+    )
 
     # Data source tracking
     price_source: Mapped[str] = mapped_column(
