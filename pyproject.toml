@@ -87,6 +87,8 @@ packages = ["src/security_master"]
 
 [tool.ruff]
 line-length = 88
+# Minimum supported version (see requires-python = ">=3.11"); Ruff uses this to
+# gate pyupgrade rewrites, so it must track the floor, not the CI matrix ceiling.
 target-version = "py311"
 src = ["src", "tests"]
 exclude = [
@@ -151,12 +153,9 @@ ignore = [
     "E501",    # line too long (handled by ruff format)
     "COM812",  # trailing comma; conflicts with ruff format (ruff warns to disable this)
     "B008",    # do not perform function calls in argument defaults
-    "C901",    # too complex
     "ANN401",  # dynamically typed expressions (Any)
     "S101",    # use of assert detected
     "PLR0913", # too many arguments
-    "BLE001",  # blind exception catching (needed for generic error handlers)
-    "UP038",   # isinstance syntax (Python compatibility)
     "PLR2004", # magic numbers (for obvious values)
     "ARG002",  # unused arguments (interface compatibility)
     "SIM102",  # nested if statements (readability preference)
@@ -173,7 +172,7 @@ ignore = [
 "pytest_plugins/*" = ["S603", "SLF001"]
 
 [tool.ruff.lint.pylint]
-max-branches = 18      # Increased from default 12 for industry standards
+max-branches = 12      # Ruff/pylint default; aligns with global PyStrict standard
 max-statements = 75    # Increased from default 50 for industry standards
 
 [tool.ruff.lint.isort]
@@ -184,6 +183,19 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[tool.pip-audit]
+# Documented, accepted CVEs. Each has a corresponding entry in
+# docs/known-vulnerabilities.md with rationale and review date. The org
+# reusable CI workflow (python-ci.yml) reads this list and passes each ID to
+# pip-audit as --ignore-vuln, so the ignores live here as the single source of
+# truth rather than hardcoded in the workflow.
+ignore-vuln = [
+    "GHSA-4xh5-x5gv-qwph",
+    "GHSA-6vgw-5pg2-w6jp",
+    "GHSA-58qw-9mgm-455v",
+    "PYSEC-2022-42969",
+]
 
 [tool.pydoclint]
 style = "google"
@@ -284,7 +296,12 @@ exclude_lines = [
 precision = 2
 show_missing = true
 skip_covered = false
-fail_under = 80
+# TEMPORARY: source-level tests do not exist yet, so coverage is ~0%. The
+# previous hand-rolled CI hid this with a per-run --cov-fail-under=0 override;
+# the org reusable workflow honors this value directly, so it lives here as the
+# single source of truth. Restore to 80 in ROADMAP Phase C, which backfills
+# tests for storage/ and the XML round-trip and targets >=80% on touched modules.
+fail_under = 0
 
 [tool.coverage.html]
 directory = "htmlcov"
