@@ -1,7 +1,7 @@
 # ADR-003: Securities Master Data Sourcing Hierarchy
 
 **Date**: 2025-08-22  
-**Status**: Accepted  
+**Status**: Deferred (accepted in principle; not yet implemented as of 2026-06-19)  
 **Deciders**: Byron, Development Team  
 **Consulted**: Portfolio Performance API Documentation, pp-portfolio-classifier Analysis  
 **Informed**: Data Quality Team, Classification Engine Team  

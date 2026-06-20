@@ -125,9 +125,9 @@ Raw Institution Data → Institution Tables → Consolidated Views → PP Export
 
 ## Related Decisions
 
-- **ADR-002**: Security Classification Taxonomy (pending)
-- **ADR-003**: Portfolio Performance Export Format (pending)  
-- **ADR-004**: Data Quality Validation Rules (pending)
+- **ADR-002**: Portfolio Performance Complete Backup Restoration Capability (Accepted)
+- **ADR-003**: Securities Master Data Sourcing Hierarchy (Deferred)  
+- **ADR-004**: Data Quality and Validation Framework (Accepted)
 
 ## References
 

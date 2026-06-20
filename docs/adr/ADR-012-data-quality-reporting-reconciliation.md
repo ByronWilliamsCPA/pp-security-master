@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Deferred (accepted in principle; not yet implemented as of 2026-06-19)
 
 ## Context
 

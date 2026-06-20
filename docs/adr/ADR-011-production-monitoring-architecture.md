@@ -1,7 +1,7 @@
 # ADR-011: Production Monitoring & Observability Architecture
 
 **Date**: 2025-08-23  
-**Status**: Accepted  
+**Status**: Deferred (accepted in principle; not yet implemented as of 2026-06-19)  
 **Deciders**: Byron, Development Team  
 **Consulted**: Production Operations, Database Administration, Security Team  
 **Informed**: Executive Stakeholders, QA Team  

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(uv run *)",
+      "Bash(uv sync)",
+      "Bash(uv lock *)",
+      "Bash(nox *)",
+      "Bash(pre-commit *)",
+      "Bash(qlty *)",
+      "Bash(git status)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ]
+  }
+}
