@@ -5,13 +5,13 @@
 # Documentation: https://reuse.software/
 name: REUSE Compliance
 
+# This job is a required status check in branch protection. It must run on
+# every pull_request so it always reports a conclusion; a `paths` filter would
+# silently skip the job on PRs that touch no matching file (for example,
+# dependency bumps that only change root files), leaving the required check
+# stuck at "Expected, waiting for status" and blocking the merge.
 on:
   pull_request:
-    paths:
-      - "**/*"
-      - "REUSE.toml"
-      - "LICENSES/**"
-      - ".github/workflows/reuse.yml"
   push:
     branches:
       - main
