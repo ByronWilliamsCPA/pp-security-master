@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 import defusedxml.ElementTree as ET  # noqa: N817
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
 from security_master.patch.pp_xml_export import PPXMLExportService
@@ -74,7 +75,21 @@ def session() -> Generator[Session, None, None]:
     if not database_url:
         pytest.skip("no test database URL set; integration test requires PostgreSQL")
 
+    # #EDGE: the autouse setup_test_environment fixture (tests/conftest.py) sets
+    # DATABASE_URL unconditionally, so "is the URL set" can never gate this test;
+    # CI legs without a postgres:17 service still reach here with a localhost URL.
+    # Probe reachability and skip (not error) when no database answers, so the
+    # test runs only where a live PostgreSQL is provisioned.
+    # #VERIFY a DB-less matrix leg reports this test as skipped, not errored.
     engine = create_engine(database_url)
+    try:
+        engine.connect().close()
+    except OperationalError:
+        engine.dispose()
+        pytest.skip(
+            "PostgreSQL not reachable at the configured URL; "
+            "integration test requires a live database"
+        )
     Base.metadata.create_all(engine)
     session_factory = sessionmaker(bind=engine)
     db_session = session_factory()
