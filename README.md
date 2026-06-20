@@ -50,7 +50,7 @@ Portfolio Performance (PP) is a powerful open-source desktop portfolio tracker. 
 
 ### Development Setup
 
-1. **Clone Repository**: `git clone [repository-url] && cd pp-security-master`
+1. **Clone Repository**: `git clone https://github.com/ByronWilliamsCPA/pp-security-master.git && cd pp-security-master`
 2. **Install Dependencies**: `uv sync`
 3. **Install qlty CLI**: `curl https://qlty.sh | bash` (standalone quality runner, not a Python package)
 4. **Configure Environment**: Copy `.env.example` to `.env` and configure database connection

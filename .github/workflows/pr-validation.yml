@@ -19,11 +19,12 @@ jobs:
   title-check:
     name: PR Title Format
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       pull-requests: read
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7  # v2.10.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411  # v2.19.4
         with:
           egress-policy: audit
       - name: Validate conventional commit title
@@ -45,11 +46,12 @@ jobs:
   body-check:
     name: PR Body Non-Empty
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       pull-requests: read
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7  # v2.10.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411  # v2.19.4
         with:
           egress-policy: audit
       - name: Check PR body is non-empty
@@ -70,11 +72,12 @@ jobs:
   pr-validation-gate:
     name: PR Validation Gate
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: [title-check, body-check]
     if: always()
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7  # v2.10.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411  # v2.19.4
         with:
           egress-policy: audit
       - name: Check all PR validation results

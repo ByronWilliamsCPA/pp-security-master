@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `darglint` and `interrogate` docstring quality gates to `noxfile.py` with per-directory coverage thresholds (`src/` at 70%, `scripts/` at 85%)
 - Add `qlty` CLI integration with `.qlty/qlty.toml` configuration covering bandit, ruff, and basedpyright plugins
 - Expand Ruff rule set to PyStrict-aligned standard: `ANN`, `ARG`, `ASYNC`, `C4`, `DTZ`, `ERA`, `FBT`, `FLY`, `FURB`, `G`, `ICN`, `INT`, `ISC`, `LOG`, `PERF`, `PGH`, `PIE`, `PL`, `PT`, `PTH`, `PYI`, `Q`, `RET`, `RSE`, `RUF`, `S`, `SIM`, `SLOT`, `T10`, `T20`, `TC`, `TID`, `TRY`, `UP`, `W` rule groups added to `[tool.ruff.lint] select`
-- Document accepted pip-audit CVE exceptions in `docs/known-vulnerabilities.md` (GHSA-4xh5-x5gv-qwph, GHSA-6vgw-5pg2-w6jp, PYSEC-2022-42969)
+- Document accepted pip-audit CVE exceptions in `docs/known-vulnerabilities.md` (GHSA-4xh5-x5gv-qwph (no CVE assigned), GHSA-6vgw-5pg2-w6jp (no CVE assigned), PYSEC-2022-42969 (CVE-2022-42969))
 
 ### Changed
 
@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Reassess `docs/known-vulnerabilities.md` (review date 2026-06-19, next due 2026-08-18): confirm `uv run pip-audit` reports no known vulnerabilities after the `msgpack` 1.2.1 / `pydantic-settings` 2.14.2 patches (GHSA-6v7p-g79w-8964, GHSA-4xgf-cpjx-pc3j); refresh the four pip/py advisories, which are no longer surfaced by pip-audit and remain documented as accepted tooling/transitive exceptions
 - SHA-pin all GitHub Actions tags across ci.yml, codeql.yml,
   renovate-auto-merge.yml, and scorecard.yml to immutable commit SHAs
   (actions/checkout v4.2.2, actions/setup-python v5.4.0,
