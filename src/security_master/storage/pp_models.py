@@ -30,6 +30,10 @@ class PPClientConfig(Base):
     """Portfolio Performance client configuration."""
 
     __tablename__ = "pp_client_config"
+    # config_name is the natural key the importer upserts on; the constraint
+    # backs _persist_config's check-then-update so it cannot select an arbitrary
+    # duplicate row.
+    __table_args__ = (UniqueConstraint("config_name", name="uq_pp_client_config_name"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     version: Mapped[int] = mapped_column(nullable=False)  # PP version (e.g., 66)
@@ -480,6 +484,11 @@ class PPBookmark(Base):
     """Portfolio Performance user bookmarks."""
 
     __tablename__ = "pp_bookmarks"
+    # (label, pattern) is the natural key the importer dedupes on; the constraint
+    # backs _persist_bookmarks's idempotency claim at the database level.
+    __table_args__ = (
+        UniqueConstraint("label", "pattern", name="uq_pp_bookmark_label_pattern"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 

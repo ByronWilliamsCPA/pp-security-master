@@ -115,7 +115,8 @@ def upgrade() -> None:
     sa.Column('sort_order', sa.Integer(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('label', 'pattern', name='uq_pp_bookmark_label_pattern')
     )
     op.create_table('pp_client_config',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -125,7 +126,8 @@ def upgrade() -> None:
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('config_name', name='uq_pp_client_config_name')
     )
     op.create_table('pp_import_batches',
     sa.Column('id', sa.Integer(), nullable=False),
