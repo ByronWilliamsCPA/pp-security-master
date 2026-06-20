@@ -1,5 +1,7 @@
 # Security Master Service - Minimum Viable Product (MVP)
 
+> **Re-baselined 2026-06-19:** The MVP scope below predates the current build state. As of 2026-06-19 the ingestion half (broker parsers, classification, XML import, round-trip, CLI) is not yet implemented. The active phase sequence, starting with a PP XML round-trip walking skeleton, now lives in `ROADMAP_2026-06-19.md` (in `docs/project/`). Use that file for current sequencing.
+
 **Version**: 1.1  
 **Date**: 2025-08-23  
 **Target Release**: Phase 0-3 (10.5 weeks) - *Updated for project planning refinements*  

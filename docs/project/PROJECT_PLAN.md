@@ -1,5 +1,7 @@
 # **Portfolio-Performance Security-Master & Classification Project Plan**
 
+> **Re-baselined 2026-06-19:** This document describes the original enterprise-scope vision (14 phases, 30 weeks). Actual implementation is roughly 15 to 20 percent complete: the storage schema layer and a one-directional PP XML exporter exist; extraction, classification, XML import, round-trip, migrations, and the CLI are not yet implemented (the CLI exists only as an entrypoint stub). The active, reality-aligned roadmap and phase sequence now live in `ROADMAP_2026-06-19.md` (this directory). Treat that file as the source of truth for what is being built next; this plan remains the long-range vision.
+
 ## (Complete roadmap and technical implementation details)
 
 > **Quick Links**: [MVP Definition](MVP.md) | [Architecture Decisions](docs/adr/) | [Database Schema](schema_exports/) | [Sample Data](sample_data/)

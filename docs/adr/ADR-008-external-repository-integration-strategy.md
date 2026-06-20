@@ -1,9 +1,11 @@
 # ADR-008: External Repository Integration Strategy
 
-**Status:** Accepted  
+**Status:** Deferred (accepted in principle; not yet implemented as of 2026-06-19)  
 **Date:** 2025-01-22  
 **Deciders:** Development Team  
 **Technical Story:** Integration of external Portfolio Performance ecosystem repositories
+
+> **Feasibility note (2026-06-19):** This decision assumes cross-language library integration (JavaScript, Excel, C#). That assumption is under review for a single-language Python + uv project and may be revised before implementation.
 
 ## Context
 

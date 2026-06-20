@@ -1,7 +1,7 @@
 # ADR-006: Security and Authentication Architecture
 
 **Date**: 2025-08-22  
-**Status**: Accepted  
+**Status**: Deferred (accepted in principle; not yet implemented as of 2026-06-19)  
 **Deciders**: Byron, Development Team  
 **Consulted**: Cloudflare Zero Trust Documentation, FastAPI Security Patterns, Unraid Security Best Practices  
 **Informed**: Infrastructure Team, Operations Team  

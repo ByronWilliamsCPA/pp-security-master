@@ -1,4 +1,9 @@
-# TODO(CI-001): migrate to org python-ci.yml reusable workflow
+# CI-001 resolved: the bulk of CI (unit tests, Ruff, BasedPyright, Bandit,
+# pip-audit) now runs through the org reusable workflow python-ci.yml. Two jobs
+# are retained locally because the reusable workflow cannot host them:
+#   - integration-tests: needs a PostgreSQL service container, which reusable
+#     workflows cannot accept as an input.
+#   - docs-lint: python-ci.yml does not run markdownlint/yamllint.
 name: CI
 
 on:
@@ -13,105 +18,41 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
-  issues: write
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  CI_ENVIRONMENT: true
-
 jobs:
-  setup:
-    name: Setup Dependencies
-    runs-on: ubuntu-latest
-    timeout-minutes: 8
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411  # v2.19.4
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
-        with:
-          enable-cache: true
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: uv sync --frozen
-
-  unit-tests:
-    name: Unit Tests (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: setup
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12", "3.13"]
-      fail-fast: false
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411  # v2.19.4
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
-        with:
-          enable-cache: true
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install dependencies
-        run: uv sync --frozen
-
-      - name: Run unit tests with coverage
-        run: |
-          # --cov-fail-under=0: Phase 3 has no source tests yet; override the 80% pyproject.toml
-          # threshold so the job fails only on actual test failures, not coverage gaps.
-          # Remove once Phase 1-2 source tests are merged and coverage reaches 80%.
-          uv run --frozen pytest -v \
-            --cov=src \
-            --cov-report=xml:coverage-unit-${{ matrix.python-version }}.xml \
-            --cov-report=term-missing \
-            --cov-fail-under=0 \
-            --junitxml=junit-unit-${{ matrix.python-version }}.xml \
-            --tb=short \
-            --maxfail=10 \
-            tests/unit/
-
-      - name: Upload unit test coverage to Codecov
-        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238  # v4.6.0
-        if: always()
-        with:
-          file: ./coverage-unit-${{ matrix.python-version }}.xml
-          fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
-          flags: unit
-          name: Unit Tests (Python ${{ matrix.python-version }})
-          verbose: true
-        continue-on-error: true
-
-      - name: Upload test artifacts
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
-        with:
-          name: unit-test-results-${{ matrix.python-version }}
-          path: |
-            junit-unit-${{ matrix.python-version }}.xml
-            coverage-unit-${{ matrix.python-version }}.xml
+  # Unit tests (tiered matrix), Ruff format+lint, BasedPyright, Bandit, and
+  # pip-audit (reads [tool.pip-audit].ignore-vuln from pyproject.toml).
+  ci:
+    name: Python CI
+    uses: ByronWilliamsCPA/.github/.github/workflows/python-ci.yml@58cb18497bb2e54a22c6adb47bdaca4d7f615eee  # v2.2.0
+    permissions:
+      contents: read
+    with:
+      python-version: '3.11'
+      enable-matrix-testing: true
+      python-versions-pr: '["3.11", "3.12"]'
+      python-versions-comprehensive: '["3.11", "3.12", "3.13"]'
+      # No source-level tests yet (storage/export are untested); keep enforcement
+      # off until Phase C backfills coverage, mirroring the prior --cov-fail-under=0.
+      coverage-threshold: 0
+      # Integration tests need PostgreSQL; handled by the integration-tests job below.
+      run-integration-tests: false
+      run-security-tests: true
+      fail-on-security-findings: true
+      # This project uses the hatchling build backend, so the package must build
+      # during uv sync; do not pass --no-build.
+      no-build: false
+      # No secrets passed: python-ci.yml declares none (Codecov/Sonar were moved
+      # to their own reusable workflows), so secrets: inherit would over-share.
 
   integration-tests:
     name: Integration Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: setup
     strategy:
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
@@ -153,8 +94,8 @@ jobs:
 
       - name: Run integration tests with coverage
         run: |
-          # --cov-fail-under=0: same as unit tests -- pre-existing coverage gap, override until
-          # Phase 1-2 source tests are merged.
+          # --cov-fail-under=0: no source-level tests yet; override the 80%
+          # pyproject threshold so the job fails only on real test failures.
           uv run --frozen pytest -v \
             --cov=src \
             --cov-report=xml:coverage-integration-${{ matrix.python-version }}.xml \
@@ -163,19 +104,7 @@ jobs:
             --junitxml=junit-integration-${{ matrix.python-version }}.xml \
             --tb=short \
             --maxfail=5 \
-            tests/integration/
-
-      - name: Upload integration test coverage to Codecov
-        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238  # v4.6.0
-        if: always()
-        with:
-          file: ./coverage-integration-${{ matrix.python-version }}.xml
-          fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
-          flags: integration
-          name: Integration Tests (Python ${{ matrix.python-version }})
-          verbose: true
-        continue-on-error: true
+            -m integration
 
       - name: Upload test artifacts
         if: always()
@@ -186,11 +115,10 @@ jobs:
             junit-integration-${{ matrix.python-version }}.xml
             coverage-integration-${{ matrix.python-version }}.xml
 
-  quality-checks:
-    name: Quality Checks
+  docs-lint:
+    name: Docs Lint (markdown + YAML)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: setup
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411  # v2.19.4
@@ -198,23 +126,6 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
-        with:
-          enable-cache: true
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: uv sync --frozen
-
-      - name: Run type checking
-        run: uv run --frozen basedpyright
-
-      - name: Run linting
-        run: |
-          uv run --frozen ruff format --check .
-          uv run --frozen ruff check .
 
       - name: Run markdown and YAML linting
         run: |
@@ -223,65 +134,27 @@ jobs:
           markdownlint --config .markdownlint.yml "**/*.md"
           yamllint .
 
-  security-scan:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: setup
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411  # v2.19.4
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
-        with:
-          enable-cache: true
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: uv sync --frozen
-
-      - name: Run security checks
-        run: |
-          echo "Running security scans"
-          # CVE ignores: all four are documented and accepted in docs/known-vulnerabilities.md
-          uv run --frozen pip-audit \
-            --ignore-vuln GHSA-4xh5-x5gv-qwph \
-            --ignore-vuln GHSA-6vgw-5pg2-w6jp \
-            --ignore-vuln GHSA-58qw-9mgm-455v \
-            --ignore-vuln PYSEC-2022-42969
-          uv run --frozen bandit -r src -ll
-
   ci-success:
     name: CI Success
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [setup, unit-tests, integration-tests, quality-checks, security-scan]
+    needs: [ci, integration-tests, docs-lint]
     if: always()
     steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411  # v2.19.4
-        with:
-          egress-policy: audit
-
       - name: Check results
+        env:
+          CI_RESULT: ${{ needs.ci.result }}
+          INTEGRATION_RESULT: ${{ needs.integration-tests.result }}
+          DOCS_RESULT: ${{ needs.docs-lint.result }}
         run: |
-          if [[ "${{ needs.setup.result }}" == "success" && \
-                "${{ needs.unit-tests.result }}" == "success" && \
-                "${{ needs.integration-tests.result }}" == "success" && \
-                "${{ needs.quality-checks.result }}" == "success" && \
-                "${{ needs.security-scan.result }}" == "success" ]]; then
+          if [[ "$CI_RESULT" == "success" && \
+                "$INTEGRATION_RESULT" == "success" && \
+                "$DOCS_RESULT" == "success" ]]; then
             echo "CI pipeline passed successfully"
           else
             echo "CI pipeline failed"
-            echo "setup: ${{ needs.setup.result }}"
-            echo "unit-tests: ${{ needs.unit-tests.result }}"
-            echo "integration-tests: ${{ needs.integration-tests.result }}"
-            echo "quality-checks: ${{ needs.quality-checks.result }}"
-            echo "security-scan: ${{ needs.security-scan.result }}"
+            echo "ci: $CI_RESULT"
+            echo "integration-tests: $INTEGRATION_RESULT"
+            echo "docs-lint: $DOCS_RESULT"
             exit 1
           fi

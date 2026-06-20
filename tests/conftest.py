@@ -3,6 +3,7 @@ Pytest configuration for PP Security Master testing.
 Provides comprehensive fixtures and test setup for all test types.
 """
 
+import json
 import os
 import tempfile
 from collections.abc import Generator
@@ -386,6 +387,58 @@ def sample_ibkr_xml_file(temp_directory: Path) -> Path:
     file_path = temp_directory / "sample_ibkr.xml"
     file_path.write_text(xml_content, encoding="utf-8")
     return file_path
+
+
+@pytest.fixture(scope="session")
+def sample_data_dir() -> Path:
+    """Provide the path to the committed ``sample_data`` directory.
+
+    Resolved relative to this conftest so the location is independent of the
+    working directory pytest is invoked from.
+
+    Returns:
+        Path to the repository-root ``sample_data`` directory of realistic
+        broker sample files.
+    """
+    return Path(__file__).parent.parent / "sample_data"
+
+
+@pytest.fixture
+def ibkr_flex_trades_sample_file(sample_data_dir: Path) -> Path:
+    """Provide the realistic, sanitized IBKR Flex Query trade sample.
+
+    Unlike ``sample_ibkr_xml_file`` (a single hand-built trade), this fixture
+    points at a 67-trade export using the genuine IBKR Flex attribute layout
+    (``tradePrice``, ``ibCommission``, ``assetCategory``/``subCategory``,
+    ``securityIDType``, the ``MM/DD/YYYY;HHMMSS`` ``dateTime`` format, etc.).
+    The account number and broker execution/order IDs are synthetic; security
+    identifiers and trade economics are real public values.
+
+    Args:
+        sample_data_dir: Fixture providing the ``sample_data`` directory path.
+
+    Returns:
+        Path to the sanitized IBKR Flex Query sample XML file.
+    """
+    return sample_data_dir / "IBKR_Flex_Trades_sample.xml"
+
+
+@pytest.fixture
+def ibkr_isin2secid_sample(sample_data_dir: Path) -> dict[str, str]:
+    """Provide the ISIN to Morningstar secid map for the IBKR Flex sample.
+
+    Covers the securities resolvable from the sample's trades; the four mutual
+    funds in the sample are intentionally absent, mirroring the real case where
+    a freshly extracted security has no cached classification yet.
+
+    Args:
+        sample_data_dir: Fixture providing the ``sample_data`` directory path.
+
+    Returns:
+        Mapping of ISIN to ``secid|type|domain`` strings.
+    """
+    path = sample_data_dir / "isin2secid_sample.json"
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 # =============================================================================
