@@ -16,5 +16,12 @@ jobs:
   sonarcloud:
     name: SonarCloud Analysis
     uses: ByronWilliamsCPA/.github/.github/workflows/python-sonarcloud.yml@58cb18497bb2e54a22c6adb47bdaca4d7f615eee  # v2.2.0
+    # The reusable workflow declares sonar-organization and sonar-project-key as
+    # required inputs; omitting them fails the workflow at startup. Values mirror
+    # sonar-project.properties (still bound to the williaby org pending the
+    # acknowledged SonarCloud rebind to byronwilliamscpa).
+    with:
+      sonar-organization: williaby
+      sonar-project-key: williaby_pp-security-master
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

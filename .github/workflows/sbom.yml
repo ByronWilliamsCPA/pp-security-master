@@ -45,3 +45,6 @@ jobs:
       severity-threshold: 'CRITICAL,HIGH'
       artifact-retention-days: 90
       fail-on-forbidden-licenses: false
+      # This project uses the hatchling build backend, so the editable project
+      # itself must be built; opt out of the reusable workflow's default --no-build.
+      no-build: false
