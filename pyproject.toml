@@ -167,6 +167,9 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+# Click injects --flag/--no-flag options as boolean positional parameters into
+# the command callback; this is the documented Click pattern, not a flag-trap.
+"src/security_master/cli.py" = ["FBT001"]
 "tests/*" = ["S101", "S110", "ANN", "ARG", "PLR2004", "PLC0415", "T201"]
 "scripts/*" = ["T20", "INP001", "ANN", "PLR0912", "PLR2004", "PTH123", "SIM118", "RUF013", "B007", "PLC0415", "G004", "S607", "S602", "S314", "S603", "RET504", "DTZ005", "RUF100"]
 "noxfile.py" = ["ANN", "D"]
