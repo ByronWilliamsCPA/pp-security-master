@@ -56,7 +56,7 @@ coverage==7.14.1
     # via pytest-cov
 cryptography==49.0.0
     # via pp-security-master
-cyclonedx-python-lib==11.7.0
+cyclonedx-python-lib==11.11.0
     # via pip-audit
 decli==0.6.3
     # via commitizen
