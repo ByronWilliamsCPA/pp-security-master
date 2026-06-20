@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add the PP XML round-trip importer: `patch/pp_xml_import.py` with `parse_client()` (DB-free, unit-testable parser) and `PPXMLImportService` (idempotent persistence by ISIN, account/portfolio uuid, and bookmark label+pattern); the `pp-master` Click CLI with `import-xml` / `export-xml` console entry point; and the Alembic baseline migration (`sql/versions/`, 21 tables) with `alembic.ini` and `sql/env.py`
+- Add unique constraints backing importer idempotency: `pp_client_config.config_name` (`uq_pp_client_config_name`) and `pp_bookmarks (label, pattern)` (`uq_pp_bookmark_label_pattern`)
 - Add `.pre-commit-config.yaml` with SHA-pinned remote hooks (ruff v0.15.12, detect-secrets v1.5.0, commitizen v4.13.10, yamllint v1.38.0, markdownlint-cli v0.48.0) and local `poetry run` hooks (basedpyright, bandit, darglint, interrogate, no-em-dash pygrep); add `pre_commit` nox session that installs and runs hooks
 - Add `.markdownlint.yml` and `.yamllint.yml` project-level linting configuration files
 - Add `[tool.commitizen]` configuration block to `pyproject.toml` with `version_provider = "pep621"`
@@ -36,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix `pp_xml_export.py` building XML through `defusedxml.ElementTree`, which omits the writer API (`Element`/`SubElement`/`tostring`) and raised `AttributeError` at runtime; it now builds with stdlib `ElementTree` and parses untrusted input with `defusedxml`
+- Widen `PPSecurityPrice.price_value` from `Integer` to `BigInteger`: PP stores prices as value * 1e8, which overflows a 32-bit integer above ~$21
+- Set `viewonly=True` on the two `PPTransactionUnit` navigation relationships to resolve an overlapping-foreign-key mapper error on the soft-polymorphic `transaction_type` key
+- Fix the PP XML round-trip integration test skipping only when `DATABASE_URL` is unset, which the autouse conftest fixture always sets; it now probes connectivity and skips when PostgreSQL is unreachable, so CI legs without a database service skip instead of erroring
 - Add `# nosemgrep: python.lang.maintainability.return.return-not-in-function` to all SQLAlchemy `mapped_column` lambda defaults in `models.py`, `pp_models.py`, and `transaction_models.py`; semgrep misreads the implicit lambda return as a bare return-not-in-function
 - Broaden `except` clause in `PPXMLExportService.validate_export` to catch `defusedxml.DefusedXmlException` in addition to `ET.ParseError`; defusedxml security violations do not inherit from `ParseError`
 - Add `try/except defusedxml.DefusedXmlException` around `defused_minidom.parseString()` in `_prettify_xml` to convert XML security violations to `ValueError` instead of propagating unhandled

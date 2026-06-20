@@ -52,6 +52,9 @@ homepage = "https://github.com/ByronWilliamsCPA/pp-security-master"
 repository = "https://github.com/ByronWilliamsCPA/pp-security-master"
 documentation = "https://github.com/ByronWilliamsCPA/pp-security-master/wiki"
 
+[project.scripts]
+pp-master = "security_master.cli:app"
+
 [dependency-groups]
 dev = [
     "pytest>=8.0.1",
@@ -100,6 +103,8 @@ exclude = [
     "docs/planning/phase-2-templates/*",
     "docs/planning/phase-4-templates/*",
     "docs/planning/phase-5-templates/*",
+    # Alembic autogenerates these revision scripts; do not lint generated code.
+    "sql/versions/*",
 ]
 
 [tool.ruff.lint]

@@ -9,6 +9,7 @@ from typing import Optional
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Date,
     DateTime,
@@ -29,6 +30,10 @@ class PPClientConfig(Base):
     """Portfolio Performance client configuration."""
 
     __tablename__ = "pp_client_config"
+    # config_name is the natural key the importer upserts on; the constraint
+    # backs _persist_config's check-then-update so it cannot select an arbitrary
+    # duplicate row.
+    __table_args__ = (UniqueConstraint("config_name", name="uq_pp_client_config_name"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     version: Mapped[int] = mapped_column(nullable=False)  # PP version (e.g., 66)
@@ -240,6 +245,12 @@ class PPAccountTransaction(Base):
         "PPTransactionUnit",
         foreign_keys="[PPTransactionUnit.transaction_id]",
         primaryjoin="and_(PPAccountTransaction.id == PPTransactionUnit.transaction_id, PPTransactionUnit.transaction_type == 'ACCOUNT')",
+        # viewonly: PPTransactionUnit.transaction_id is a soft-polymorphic key
+        # shared with PPPortfolioTransaction.units (disambiguated only by
+        # transaction_type), not a real FK. These navigations are read-only;
+        # units are written explicitly. Without viewonly, the two overlapping
+        # relationships fail mapper configuration.
+        viewonly=True,
     )
 
     def __repr__(self) -> str:
@@ -321,6 +332,9 @@ class PPPortfolioTransaction(Base):
         "PPTransactionUnit",
         foreign_keys="[PPTransactionUnit.transaction_id]",
         primaryjoin="and_(PPPortfolioTransaction.id == PPTransactionUnit.transaction_id, PPTransactionUnit.transaction_type == 'PORTFOLIO')",
+        # See the matching note on PPAccountTransaction.units: read-only
+        # navigation over a soft-polymorphic key, viewonly resolves the overlap.
+        viewonly=True,
     )
 
     def __repr__(self) -> str:
@@ -373,10 +387,12 @@ class PPSecurityPrice(Base):
 
     # Price data
     price_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    # PP stores prices as value * 100000000, so a ~$26 price is ~2.6e9, which
+    # overflows a 32-bit INTEGER. BigInteger (INT8) is required.
     price_value: Mapped[int] = mapped_column(
-        Integer,
+        BigInteger,
         nullable=False,
-    )  # PP stores as integer (multiply by 100000000)
+    )
 
     # Data source tracking
     price_source: Mapped[str] = mapped_column(
@@ -468,6 +484,11 @@ class PPBookmark(Base):
     """Portfolio Performance user bookmarks."""
 
     __tablename__ = "pp_bookmarks"
+    # (label, pattern) is the natural key the importer dedupes on; the constraint
+    # backs _persist_bookmarks's idempotency claim at the database level.
+    __table_args__ = (
+        UniqueConstraint("label", "pattern", name="uq_pp_bookmark_label_pattern"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
