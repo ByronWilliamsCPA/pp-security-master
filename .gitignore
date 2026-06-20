@@ -123,5 +123,16 @@ requirements-hashed.txt
 # Superpowers brainstorm session files (ephemeral server pid/log/content)
 .superpowers/
 
+# Superpowers plans/specs are local working artifacts, not shipped docs.
+# The durable forward roadmap lives in docs/project/ROADMAP_2026-06-19.md.
+docs/superpowers/
+
 # SonarLint IDE-local analysis state
 .sonarlint/
+
+# Old Portfolio Performance backup from a prior Windows install (not project
+# source). Contains a pp-portfolio-classifier clone, a Windows virtualenv, and
+# real-holdings-derived data (.settings, isin2secid.json). Kept locally for
+# reference only; never committed. See ADR-008 for the planned upstream
+# subtree integration of pp-portfolio-classifier.
+PortfolioPerformance/
