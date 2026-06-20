@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from sqlalchemy import create_engine, func, select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
@@ -42,17 +43,14 @@ def _database_url() -> str | None:
     return os.getenv("PPSM_TEST_DATABASE_URL") or os.getenv("DATABASE_URL")
 
 
-# The autouse conftest fixture sets DATABASE_URL to a test_user DSN that is not
-# a running server, so prefer PPSM_TEST_DATABASE_URL and require it explicitly.
-_DB_URL = os.getenv("PPSM_TEST_DATABASE_URL")
-
+# CI's integration-tests job provisions a postgres:17 service and exports
+# DATABASE_URL, so resolve PPSM_TEST_DATABASE_URL or DATABASE_URL and probe
+# reachability in the fixture (skipping, not erroring, when no database answers).
+# This matches tests/integration/test_pp_xml_roundtrip.py so the persistence path
+# actually runs in CI rather than skipping on the env-var name.
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.database,
-    pytest.mark.skipif(
-        _DB_URL is None,
-        reason="PPSM_TEST_DATABASE_URL not set; skipping real-Postgres test",
-    ),
 ]
 
 
@@ -66,9 +64,21 @@ def session() -> Generator[Session, None, None]:
     Yields:
         An active SQLAlchemy session bound to the test database.
     """
-    url = _DB_URL
-    assert url is not None  # guaranteed by skipif above
+    url = _database_url()
+    if url is None:
+        pytest.skip("no test database URL set; integration test requires PostgreSQL")
+    # The autouse setup_test_environment fixture sets DATABASE_URL unconditionally,
+    # so "is the URL set" cannot gate this test; probe reachability and skip (not
+    # error) when no database answers, so it runs only where Postgres is live.
     engine = create_engine(url)
+    try:
+        engine.connect().close()
+    except OperationalError:
+        engine.dispose()
+        pytest.skip(
+            "PostgreSQL not reachable at the configured URL; "
+            "integration test requires a live database"
+        )
     Base.metadata.create_all(bind=engine)
     connection = engine.connect()
     sess = Session(bind=connection)

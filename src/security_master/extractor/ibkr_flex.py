@@ -175,16 +175,26 @@ def _trade_from_element(elem: ET.Element) -> ParsedTrade:
         msg = "Trade element is missing required tradeDate attribute"
         raise ValueError(msg)
 
-    # #EDGE: tradePrice for FUND assetCategory rows can carry 8 decimal
-    # places (e.g. 9.70000033), but the price column is Numeric(12, 4) and
-    # will silently round on persist (-> 9.7000). This loses sub-cent
-    # precision on the recorded execution price. amount/proceeds is stored at
-    # full precision, so portfolio valuation is unaffected; only the
-    # per-share price readout rounds.
-    # #VERIFY: if exact FUND execution prices are ever needed downstream,
-    # widen the price column scale (e.g. Numeric(18, 8)) and add a migration.
+    # #EDGE: several numeric columns round sub-cent precision on persist. price
+    # is Numeric(12, 4): a FUND tradePrice with 8 decimals (e.g. 9.70000033)
+    # rounds to 9.7000. amount (proceeds) is Numeric(15, 2) and the commissions
+    # are Numeric(10, 2): Flex emits sub-cent values for these (the sample has
+    # proceeds="-1059.306" and ibCommission="-0.625"), which round to whole
+    # cents on persist (-> -1059.31, -0.63). The rounding is bounded to sub-cent,
+    # but it is NOT lossless: amount and commission are affected, not only the
+    # per-share price readout.
+    # #VERIFY: if exact execution prices or proceeds are ever needed downstream,
+    # widen the affected column scales (e.g. price Numeric(18, 8), amount
+    # Numeric(18, 4)) and add a migration.
     price = _parse_decimal(attr.get("tradePrice"))
 
+    # #ASSUME: well-formed Flex Trade records always carry buySell, proceeds, and
+    # currency, so the lenient fallbacks below (transaction_type -> "", amount ->
+    # Decimal(0), currency -> "USD") are never exercised in practice. A malformed
+    # record missing these would persist invalid economics into NOT NULL columns
+    # rather than failing loudly.
+    # #VERIFY: if broker exports are ever found to omit these attributes, replace
+    # the fallbacks with an explicit raise so bad economics cannot reach the DB.
     return ParsedTrade(
         transaction_date=transaction_date,
         settlement_date=_parse_date(attr.get("settleDateTarget")),
@@ -295,7 +305,10 @@ class IBKRFlexImportService:
         batch_id = self._new_batch_id()
         summary = ImportSummary(import_batch_id=batch_id, source_file=source_file)
 
-        candidate_ids = [t.trade_id for t in trades if t.trade_id is not None]
+        # De-duplicate before the existence query: a Flex file can repeat a
+        # trade_id (handled below via seen_in_run), and a deduplicated list keeps
+        # the IN (...) parameter count proportional to distinct ids, not rows.
+        candidate_ids = list({t.trade_id for t in trades if t.trade_id is not None})
         already_present = self._existing_trade_ids(candidate_ids)
 
         # #CRITICAL: trade_id is the idempotency key (UNIQUE column). Skipping
