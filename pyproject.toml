@@ -22,7 +22,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Office/Business :: Financial",
 ]
-requires-python = ">=3.11,<3.15"
+requires-python = ">=3.11"
 dependencies = [
     # Database dependencies
     "sqlalchemy>=2.0.36,<3.0.0",
@@ -75,8 +75,7 @@ dev = [
     "ipython>=9.0.0",
     "ipdb>=0.13.13",
     "pip-audit>=2.9.0,<3.0.0",
-    "isort>=6.0.1,<7.0.0",
-    "darglint>=1.8.1",
+    "pydoclint>=0.5.0",
     "interrogate>=1.7.0",
     "commitizen>=3.0.0",
 ]
@@ -103,39 +102,50 @@ exclude = [
 
 [tool.ruff.lint]
 select = [
-    "E",   # pycodestyle errors
-    "W",   # pycodestyle warnings
-    "F",   # pyflakes
-    "I",   # isort
-    "C",   # flake8-comprehensions
-    "B",   # flake8-bugbear
-    "UP",  # pyupgrade
-    "N",   # pep8-naming
-    "YTT", # flake8-2020
-    "ANN", # flake8-annotations
-    "S",   # flake8-bandit
-    "BLE", # flake8-blind-except
-    "A",   # flake8-builtins
-    "COM", # flake8-commas
-    "C4",  # flake8-comprehensions
-    "DTZ", # flake8-datetimez
-    "ISC", # flake8-implicit-str_concat
-    "ICN", # flake8-import-conventions
-    "G",   # flake8-logging-format
-    "INP", # flake8-no-pep420
-    "PIE", # flake8-pie
-    "T20", # flake8-print
-    "PT",  # flake8-pytest-style
-    "Q",   # flake8-quotes
-    "RET", # flake8-return
-    "SIM", # flake8-simplify
-    "TID", # flake8-tidy-imports
-    "ARG", # flake8-unused-arguments
-    "PTH", # flake8-use-pathlib
-    "ERA", # eradicate
-    "PGH", # pygrep-hooks
-    "PL",  # pylint
-    "RUF", # ruff-specific
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "C",    # flake8-comprehensions
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "N",    # pep8-naming
+    "YTT",  # flake8-2020
+    "ANN",  # flake8-annotations
+    "S",    # flake8-bandit
+    "BLE",  # flake8-blind-except
+    "A",    # flake8-builtins
+    "COM",  # flake8-commas
+    "C4",   # flake8-comprehensions
+    "DTZ",  # flake8-datetimez
+    "EM",   # flake8-errmsg
+    "ISC",  # flake8-implicit-str_concat
+    "ICN",  # flake8-import-conventions
+    "G",    # flake8-logging-format
+    "INP",  # flake8-no-pep420
+    "PIE",  # flake8-pie
+    "T10",  # flake8-debugger
+    "T20",  # flake8-print
+    "PT",   # flake8-pytest-style
+    "Q",    # flake8-quotes
+    "RET",  # flake8-return
+    "SIM",  # flake8-simplify
+    "TID",  # flake8-tidy-imports
+    "ARG",  # flake8-unused-arguments
+    "PTH",  # flake8-use-pathlib
+    "ERA",  # eradicate
+    "PGH",  # pygrep-hooks
+    "PL",   # pylint
+    "RUF",  # ruff-specific
+    "FA",   # flake8-future-annotations
+    "TCH",  # flake8-type-checking
+    "FBT",  # flake8-boolean-trap
+    "TRY",  # tryceratops
+    "FURB", # refurb
+    "LOG",  # flake8-logging
+    "ASYNC",# flake8-async
+    "RSE",  # flake8-raise
+    "SLF",  # flake8-self
 ]
 ignore = [
     "E501",    # line too long (handled by ruff format)
@@ -158,7 +168,9 @@ ignore = [
 "noxfile.py" = ["ANN", "D"]
 "*.yaml" = ["ALL"]
 "*.yml" = ["ALL"]
-"pytest_plugins/*" = ["S603"]
+# pytest plugins attach state to the config object via private attributes;
+# this is the documented pytest pattern, not an encapsulation violation.
+"pytest_plugins/*" = ["S603", "SLF001"]
 
 [tool.ruff.lint.pylint]
 max-branches = 18      # Increased from default 12 for industry standards
@@ -173,6 +185,15 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
 
+[tool.pydoclint]
+style = "google"
+# Type hints live in signatures, not docstrings; do not require them in docstrings.
+arg-type-hints-in-docstring = false
+check-return-types = false
+check-yield-types = false
+allow-init-docstring = true
+exclude = '\.git|\.venv|\.nox'
+
 [tool.basedpyright]
 include = ["src/security_master"]
 pythonVersion = "3.11"
@@ -181,20 +202,6 @@ typeCheckingMode = "strict"
 strictListInference = true
 strictDictionaryInference = true
 strictSetInference = true
-
-# Dedicated isort configuration for import organization
-[tool.isort]
-profile = "black"
-line_length = 88
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
-known_first_party = ["src"]
-known_third_party = ["pytest", "httpx", "click", "pydantic", "sqlalchemy", "alembic"]
-sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
-skip_glob = ["**/migrations/*", "**/venv/*", "**/.venv/*"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"

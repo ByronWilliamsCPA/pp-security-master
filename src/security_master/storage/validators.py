@@ -1,3 +1,5 @@
+"""Validation logic and data-quality scoring for SecurityMaster records."""
+
 import re
 from decimal import Decimal
 

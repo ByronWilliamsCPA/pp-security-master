@@ -108,3 +108,20 @@ Thumbs.db
 # qlty runtime directories (qlty.toml is committed; runtime artifacts are not)
 .qlty/*
 !.qlty/qlty.toml
+
+# Tooling caches and benchmark output
+.ruff_cache/
+.benchmarks/
+
+# Compliance audit reports (local-only; see repo-compliance skill)
+docs/compliance-reports/
+
+# Generated requirements variant (produced by scripts/generate_requirements.sh;
+# only requirements.txt and requirements-dev.txt are committed)
+requirements-hashed.txt
+
+# Superpowers brainstorm session files (ephemeral server pid/log/content)
+.superpowers/
+
+# SonarLint IDE-local analysis state
+.sonarlint/

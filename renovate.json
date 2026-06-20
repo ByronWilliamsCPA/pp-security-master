@@ -23,8 +23,7 @@
         "github-actions"
       ],
       "matchPackagePatterns": [
-        "ByronWilliamsCPA/.github",
-        "williaby/.github"
+        "ByronWilliamsCPA/.github"
       ],
       "versioning": "semver",
       "followTag": "v1"

@@ -1,3 +1,5 @@
+"""SQLAlchemy ORM models for institution-specific and consolidated transaction tables."""
+
 from datetime import UTC, date, datetime
 from decimal import Decimal
 

@@ -28,17 +28,23 @@ on:
     - cron: "0 8 * * 1"
   workflow_dispatch:
 
+# Top-level read-only; security-events: write scoped to the sbom job only.
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   sbom:
     name: SBOM & Security
-    uses: ByronWilliamsCPA/.github/.github/workflows/python-sbom.yml@c22009ccaab0d3234819d30d9d7a03d53c531cb9  # main
+    permissions:
+      contents: read
+      security-events: write
+    uses: ByronWilliamsCPA/.github/.github/workflows/python-sbom.yml@58cb18497bb2e54a22c6adb47bdaca4d7f615eee  # v2.2.0
     with:
       python-version: '3.12'
       fail-on-vulnerabilities: true
       severity-threshold: 'CRITICAL,HIGH'
       artifact-retention-days: 90
       fail-on-forbidden-licenses: false
+      # This project uses the hatchling build backend, so the editable project
+      # itself must be built; opt out of the reusable workflow's default --no-build.
+      no-build: false
