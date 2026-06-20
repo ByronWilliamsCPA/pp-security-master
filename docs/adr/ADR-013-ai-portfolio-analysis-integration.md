@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Deferred. This AI/LLM integration is downstream of the MVP (XML round-trip and broker ingestion) and will be reconsidered once that core is built and tested.
 
 ## Context
 

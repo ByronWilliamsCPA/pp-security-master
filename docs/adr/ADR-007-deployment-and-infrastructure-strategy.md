@@ -1,7 +1,7 @@
 # ADR-007: Deployment and Infrastructure Strategy
 
 **Date**: 2025-08-22  
-**Status**: Accepted  
+**Status**: Deferred (accepted in principle; not yet implemented as of 2026-06-19)  
 **Deciders**: Byron, Development Team  
 **Consulted**: Unraid Community Apps Documentation, PostgreSQL 17 Performance Guidelines, Docker Best Practices  
 **Informed**: Infrastructure Team, Operations Team  
@@ -402,12 +402,12 @@ jobs:
         uses: actions/checkout@v4
         
       - name: Run tests
-        run: poetry run pytest
+        run: uv run pytest
         
       - name: Security scan
         run: |
-          poetry run safety check
-          poetry run bandit -r src
+          uv run pip-audit
+          uv run bandit -r src
           
       - name: Build images
         run: docker-compose build
