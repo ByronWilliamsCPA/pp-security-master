@@ -29,6 +29,7 @@ now. See ``docs/project/ROADMAP_2026-06-19.md`` Phase C and ADR-014.
 
 from __future__ import annotations
 
+import logging
 import uuid as uuid_module
 from dataclasses import dataclass, field
 from datetime import date
@@ -54,6 +55,8 @@ from security_master.storage.pp_models import (
     PPSecurityPrice,
     PPTransactionUnit,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 _DEFAULT_FEED = "PP"
 # PP serializes monetary amounts as integer cents and share counts scaled by
@@ -162,7 +165,15 @@ class ParsedClient:
 
 @dataclass
 class ImportSummary:
-    """Counts of rows created by an import run."""
+    """Per-entity counts for an import run.
+
+    The counts describe the effective import, not strictly rows inserted.
+    ``securities`` and ``accounts`` count every entity present in the source
+    document (created or matched as already-existing), so on an idempotent
+    re-import they equal the source counts even though no new rows are written.
+    ``prices``, ``portfolios``, ``bookmarks``, ``account_transactions`` and
+    ``transaction_units`` count only rows newly inserted by this run.
+    """
 
     config_version: int
     securities: int = 0
@@ -403,12 +414,19 @@ class PPXMLImportService:
         responsible for committing). Existing securities are matched by ISIN so
         re-importing does not create duplicates.
 
+        #EDGE: idempotency holds only for securities that carry an ISIN; a
+        security with no ISIN cannot be matched and is re-created on every
+        import (see :meth:`_get_or_create_security`). PP exports from a single
+        broker normally populate ISIN for all instruments.
+        #VERIFY re-import a backup containing an ISIN-less security and confirm
+        whether duplicates are acceptable before relying on idempotency there.
+
         Args:
             xml_content: The full PP ``client.xml`` document as a string.
             config_name: Name to assign to the created PPClientConfig record.
 
         Returns:
-            An :class:`ImportSummary` with per-entity row counts.
+            An :class:`ImportSummary` whose counts are described on that class.
         """
         client = parse_client(xml_content)
         summary = ImportSummary(config_version=client.version)
@@ -434,6 +452,10 @@ class PPXMLImportService:
 
     def _persist_config(self, client: ParsedClient, config_name: str) -> None:
         """Create or refresh the active PPClientConfig for this backup."""
+        # #ASSUME (data integrity): config_name identifies at most one config
+        # row; the unique constraint on pp_client_config.config_name backs this
+        # check-then-update so .first() cannot select an arbitrary duplicate.
+        # #VERIFY the config_name unique constraint is present in the schema.
         existing = (
             self.session.query(PPClientConfig)
             .filter_by(config_name=config_name)
@@ -498,6 +520,12 @@ class PPXMLImportService:
 
         Returns the security and a flag that is True when it was newly created.
         """
+        # #ASSUME (data integrity): ISIN uniquely identifies a security within a
+        # PP backup and is stable across re-imports. The unique index on
+        # securities_master.isin enforces this for non-null ISINs; a check-then-
+        # insert race between two concurrent imports surfaces as an IntegrityError
+        # at flush rather than a silent duplicate.
+        # #VERIFY no two distinct instruments in a target backup share an ISIN.
         if parsed.isin:
             existing = (
                 self.session.query(SecurityMaster).filter_by(isin=parsed.isin).first()
@@ -574,6 +602,10 @@ class PPXMLImportService:
 
     def _persist_bookmarks(self, client: ParsedClient) -> int:
         """Persist dashboard bookmarks (idempotent by label + pattern)."""
+        # #ASSUME (data integrity): (label, pattern) identifies a bookmark; the
+        # unique constraint on that pair backs this check-then-insert so a
+        # concurrent re-import races to an IntegrityError rather than silently
+        # duplicating. #VERIFY the (label, pattern) unique constraint exists.
         count = 0
         for parsed in client.bookmarks:
             existing = (
@@ -637,7 +669,20 @@ class PPXMLImportService:
 
         security_id = None
         if parsed_txn.security_position is not None:
+            # #EDGE: a positional security[N] reference that does not resolve
+            # (out-of-range index from a malformed/truncated export) would
+            # otherwise persist a transaction with a NULL security link and no
+            # signal. Warn so the lost linkage is observable rather than silent.
+            # #VERIFY transactions in a target backup all reference in-range
+            # security positions.
             security_id = position_to_id.get(parsed_txn.security_position)
+            if security_id is None:
+                _LOGGER.warning(
+                    "account-transaction %s references unresolved security "
+                    "position %s; persisting with no security link",
+                    parsed_txn.uuid,
+                    parsed_txn.security_position,
+                )
 
         transaction = PPAccountTransaction(
             account_id=account_id,
