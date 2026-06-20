@@ -216,7 +216,7 @@ synchronize_branches
    - Run unit tests: `uv run pytest tests/unit/ -v`
    - Run integration tests: `uv run pytest tests/integration/ -v`
    - Run security scans: `uv run bandit -r src`
-   - Run dependency checks: `uv run pip-audit`
+   - Run dependency checks: `uv run pip-audit` (CI passes `--ignore-vuln` for accepted CVEs; see `docs/known-vulnerabilities.md`)
 
 3. **Perform Integration Testing**:
    - Test with external dependencies (Qdrant, Azure AI)

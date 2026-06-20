@@ -5,7 +5,7 @@
 If you discover a security vulnerability in this repository,
 **please do not open a public issue**.
 Instead, report it privately using GitHub's Private Vulnerability Reporting feature:
-[Report a vulnerability](https://github.com/ByronWilliamsCPA/pp-security-master/security/advisories/new) # pragma: allowlist secret
+[Report a vulnerability](https://github.com/ByronWilliamsCPA/pp-security-master/security/advisories/new) <!-- pragma: allowlist secret -->
 
 Fill in the details and submit. All reports are kept confidential.
 

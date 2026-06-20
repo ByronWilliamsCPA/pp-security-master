@@ -246,6 +246,8 @@ validate_and_setup_branch "$PHASE" "$ISSUE"
        uv run pre-commit run --all-files || return 1
 
        echo "2. Security scans..."
+       # CI passes --ignore-vuln for accepted CVEs (see docs/known-vulnerabilities.md);
+       # a bare local run may report those documented exceptions.
        uv run pip-audit || echo "⚠️  Security issues found"
        uv run bandit -r src || return 1
 
