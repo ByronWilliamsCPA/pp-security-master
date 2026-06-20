@@ -1,0 +1,62 @@
+{
+  "name": "BRX-Plus (Byron)",
+  "color": "#adcaf6",
+  "categories": [
+    {
+      "name": "Equity",
+      "key": "AC.EQUITY",
+      "color": "#a3f7a5",
+      "children": [
+        { "name": "US Core Beta", "key": "AC.EQUITY.US.CORE_BETA", "color": "#d6cb86" },
+        { "name": "US Factors & Styles", "key": "AC.EQUITY.US.FACTORS_STYLES", "color": "#d0bcbf" },
+        { "name": "US Growth / Value / Size", "key": "AC.EQUITY.US.STYLE_SIZE", "color": "#e2b1f8" },
+        { "name": "International Developed", "key": "AC.EQUITY.INTL.DEV", "color": "#acf2c7" },
+        { "name": "Emerging Markets", "key": "AC.EQUITY.INTL.EM", "color": "#95ccb7" },
+        { "name": "Sector / Thematic", "key": "AC.EQUITY.SECTOR_THEMATIC", "color": "#c88dc9" }
+      ]
+    },
+    {
+      "name": "Fixed Income",
+      "key": "AC.FIXED_INCOME",
+      "color": "#b790d8",
+      "children": [
+        { "name": "Core Aggregate", "key": "AC.FI.CORE_AGG", "color": "#8bd481" },
+        { "name": "Treasuries (Short)", "key": "AC.FI.TSYS.SHORT", "color": "#80cd8d" },
+        { "name": "Treasuries (Intermediate)", "key": "AC.FI.TSYS.INTERMEDIATE", "color": "#e785df" },
+        { "name": "Treasuries (Long)", "key": "AC.FI.TSYS.LONG", "color": "#e2f0f5" },
+        { "name": "TIPS", "key": "AC.FI.TIPS", "color": "#ae9cca" },
+        { "name": "Investment Grade Credit", "key": "AC.FI.IG_CREDIT", "color": "#d0a2c3" },
+        { "name": "High Yield", "key": "AC.FI.HIGH_YIELD", "color": "#9fd2bc" },
+        { "name": "Municipals", "key": "AC.FI.MUNICIPALS", "color": "#cc8b98" },
+        { "name": "International / EM Debt", "key": "AC.FI.INTL_EM", "color": "#b2aeeb" }
+      ]
+    },
+    {
+      "name": "Alternatives",
+      "key": "AC.ALTS",
+      "color": "#e8fe9c",
+      "children": [
+        { "name": "Real Estate (Public REITs / Private)", "key": "AC.ALTS.RE", "color": "#c1a9d5" },
+        { "name": "Commodities (Gold / Broad)", "key": "AC.ALTS.COMM", "color": "#8eabde" },
+        { "name": "Market Neutral / Hedge Fund-Like", "key": "AC.ALTS.MKT_NEUTRAL", "color": "#a785b5" },
+        { "name": "Systematic / Multi-Strategy", "key": "AC.ALTS.SYS_MULTI", "color": "#bcc8f8" },
+        { "name": "Defined-Outcome / Buffer ETFs", "key": "AC.ALTS.BUFFER", "color": "#85eb8c" },
+        { "name": "Private Markets (Equity)", "key": "AC.ALTS.PRIV.EQUITY", "color": "#dbf8a4" },
+        { "name": "Private Markets (Credit)", "key": "AC.ALTS.PRIV.CREDIT", "color": "#8bf2ca" },
+        { "name": "Crypto (BTC)", "key": "AC.ALTS.CRYPTO.BTC", "color": "#83f4c4" },
+        { "name": "Crypto (ETH)", "key": "AC.ALTS.CRYPTO.ETH", "color": "#99aab3" },
+        { "name": "Crypto (Diversified)", "key": "AC.ALTS.CRYPTO.DIV", "color": "#bdc8ee" }
+      ]
+    },
+    {
+      "name": "Cash & Cash Equivalents",
+      "key": "AC.CASH",
+      "color": "#c1d8b3",
+      "children": [
+        { "name": "Money Market / Bank Deposits", "key": "AC.CASH.MONEY_MARKET", "color": "#9fe9ed" },
+        { "name": "T-Bills (1-6m)", "key": "AC.CASH.TBILLS", "color": "#e5b5fa" },
+        { "name": "Short-Term Cash Proxies", "key": "AC.CASH.SHORT_TERM", "color": "#ad8bd2" }
+      ]
+    }
+  ]
+}

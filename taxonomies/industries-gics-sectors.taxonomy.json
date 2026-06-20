@@ -1,0 +1,17 @@
+{
+  "name": "Industries (GICS, Sectors)",
+  "color": "#e786c5",
+  "categories": [
+    { "name": "Energy", "key": "10", "color": "#8a892c" },
+    { "name": "Materials", "key": "15", "color": "#578a2c" },
+    { "name": "Industrials", "key": "20", "color": "#2c8a34" },
+    { "name": "Consumer Discretionary", "key": "25", "color": "#2c8a67" },
+    { "name": "Consumer Staples", "key": "30", "color": "#2c798a" },
+    { "name": "Health Care", "key": "35", "color": "#2c468a" },
+    { "name": "Financials", "key": "40", "color": "#452c8a" },
+    { "name": "Information Technology", "key": "45", "color": "#782c8a" },
+    { "name": "Communication Services", "key": "50", "color": "#8a2c68" },
+    { "name": "Utilities", "key": "55", "color": "#8a2c35" },
+    { "name": "Real Estate", "key": "60", "color": "#8a562c" }
+  ]
+}

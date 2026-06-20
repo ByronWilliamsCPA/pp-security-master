@@ -1,0 +1,1262 @@
+{
+  "name": "Industries (GICS)",
+  "color": "#9df2fa",
+  "categories": [
+    {
+      "name": "Energy",
+      "key": "10",
+      "children": [
+        {
+          "name": "Energy",
+          "key": "1010",
+          "children": [
+            {
+              "name": "Energy Equipment & Services",
+              "key": "101010",
+              "children": [
+                {
+                  "name": "Oil & Gas Drilling",
+                  "key": "10101010"
+                },
+                {
+                  "name": "Oil & Gas Equipment & Services",
+                  "key": "10101020"
+                }
+              ]
+            },
+            {
+              "name": "Oil, Gas & Consumable Fuels",
+              "key": "101020",
+              "children": [
+                {
+                  "name": "Integrated Oil & Gas",
+                  "key": "10102010"
+                },
+                {
+                  "name": "Oil & Gas Exploration & Production",
+                  "key": "10102020"
+                },
+                {
+                  "name": "Oil & Gas Refining & Marketing",
+                  "key": "10102030"
+                },
+                {
+                  "name": "Oil & Gas Storage & Transportation",
+                  "key": "10102040"
+                },
+                {
+                  "name": "Coal & Consumable Fuels",
+                  "key": "10102050"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Materials",
+      "key": "15",
+      "children": [
+        {
+          "name": "Materials",
+          "key": "1510",
+          "children": [
+            {
+              "name": "Chemicals",
+              "key": "151010",
+              "children": [
+                {
+                  "name": "Commodity Chemicals",
+                  "key": "15101010"
+                },
+                {
+                  "name": "Diversified Chemicals",
+                  "key": "15101020"
+                },
+                {
+                  "name": "Fertilizers & Agricultural Chemicals",
+                  "key": "15101030"
+                },
+                {
+                  "name": "Industrial Gases",
+                  "key": "15101040"
+                },
+                {
+                  "name": "Specialty Chemicals",
+                  "key": "15101050"
+                }
+              ]
+            },
+            {
+              "name": "Construction Materials",
+              "key": "151020",
+              "children": [
+                {
+                  "name": "Construction Materials",
+                  "key": "15102010"
+                }
+              ]
+            },
+            {
+              "name": "Containers & Packaging",
+              "key": "151030",
+              "children": [
+                {
+                  "name": "Metal & Glass Containers",
+                  "key": "15103010"
+                },
+                {
+                  "name": "Paper Packaging",
+                  "key": "15103020"
+                }
+              ]
+            },
+            {
+              "name": "Metals & Mining",
+              "key": "151040",
+              "children": [
+                {
+                  "name": "Aluminum",
+                  "key": "15104010"
+                },
+                {
+                  "name": "Diversified Metals & Mining",
+                  "key": "15104020"
+                },
+                {
+                  "name": "Copper",
+                  "key": "15104025"
+                },
+                {
+                  "name": "Gold",
+                  "key": "15104030"
+                },
+                {
+                  "name": "Precious Metals & Minerals",
+                  "key": "15104040"
+                },
+                {
+                  "name": "Silver",
+                  "key": "15104045"
+                },
+                {
+                  "name": "Steel",
+                  "key": "15104050"
+                }
+              ]
+            },
+            {
+              "name": "Paper & Forest Products",
+              "key": "151050",
+              "children": [
+                {
+                  "name": "Forest Products",
+                  "key": "15105010"
+                },
+                {
+                  "name": "Paper Products",
+                  "key": "15105020"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Industrials",
+      "key": "20",
+      "children": [
+        {
+          "name": "Capital Goods",
+          "key": "2010",
+          "children": [
+            {
+              "name": "Aerospace & Defense",
+              "key": "201010",
+              "children": [
+                {
+                  "name": "Aerospace & Defense",
+                  "key": "20101010"
+                }
+              ]
+            },
+            {
+              "name": "Building Products",
+              "key": "201020",
+              "children": [
+                {
+                  "name": "Building Products",
+                  "key": "20102010"
+                }
+              ]
+            },
+            {
+              "name": "Construction & Engineering",
+              "key": "201030",
+              "children": [
+                {
+                  "name": "Construction & Engineering",
+                  "key": "20103010"
+                }
+              ]
+            },
+            {
+              "name": "Electrical Equipment",
+              "key": "201040",
+              "children": [
+                {
+                  "name": "Electrical Components & Equipment",
+                  "key": "20104010"
+                },
+                {
+                  "name": "Heavy Electrical Equipment",
+                  "key": "20104020"
+                }
+              ]
+            },
+            {
+              "name": "Industrial Conglomerates",
+              "key": "201050",
+              "children": [
+                {
+                  "name": "Industrial Conglomerates",
+                  "key": "20105010"
+                }
+              ]
+            },
+            {
+              "name": "Machinery",
+              "key": "201060",
+              "children": [
+                {
+                  "name": "Construction Machinery & Heavy Trucks",
+                  "key": "20106010"
+                },
+                {
+                  "name": "Agricultural & Farm Machinery",
+                  "key": "20106015"
+                },
+                {
+                  "name": "Industrial Machinery",
+                  "key": "20106020"
+                }
+              ]
+            },
+            {
+              "name": "Trading Companies & Distributors",
+              "key": "201070",
+              "children": [
+                {
+                  "name": "Trading Companies & Distributors",
+                  "key": "20107010"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Commercial & Professional Services",
+          "key": "2020",
+          "children": [
+            {
+              "name": "Commercial Services & Supplies",
+              "key": "202010",
+              "children": [
+                {
+                  "name": "Commercial Printing",
+                  "key": "20201010"
+                },
+                {
+                  "name": "Environmental & Facilities Services",
+                  "key": "20201050"
+                },
+                {
+                  "name": "Office Services & Supplies",
+                  "key": "20201060"
+                },
+                {
+                  "name": "Diversified Support Services",
+                  "key": "20201070"
+                },
+                {
+                  "name": "Security & Alarm Services",
+                  "key": "20201080"
+                }
+              ]
+            },
+            {
+              "name": "Professional Services",
+              "key": "202020",
+              "children": [
+                {
+                  "name": "Human Resource & Employment Services",
+                  "key": "20202010"
+                },
+                {
+                  "name": "Research & Consulting Services",
+                  "key": "20202020"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Transportation",
+          "key": "2030",
+          "children": [
+            {
+              "name": "Air Freight & Logistics",
+              "key": "203010",
+              "children": [
+                {
+                  "name": "Air Freight & Logistics",
+                  "key": "20301010"
+                }
+              ]
+            },
+            {
+              "name": "Airlines",
+              "key": "203020",
+              "children": [
+                {
+                  "name": "Airlines",
+                  "key": "20302010"
+                }
+              ]
+            },
+            {
+              "name": "Marine",
+              "key": "203030",
+              "children": [
+                {
+                  "name": "Marine",
+                  "key": "20303010"
+                }
+              ]
+            },
+            {
+              "name": "Road & Rail",
+              "key": "203040",
+              "children": [
+                {
+                  "name": "Railroads",
+                  "key": "20304010"
+                },
+                {
+                  "name": "Trucking",
+                  "key": "20304020"
+                }
+              ]
+            },
+            {
+              "name": "Transportation Infrastructure",
+              "key": "203050",
+              "children": [
+                {
+                  "name": "Airport Services",
+                  "key": "20305010"
+                },
+                {
+                  "name": "Highways & Railtracks",
+                  "key": "20305020"
+                },
+                {
+                  "name": "Marine Ports & Services",
+                  "key": "20305030"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Consumer Discretionary",
+      "key": "25",
+      "children": [
+        {
+          "name": "Automobiles & Components",
+          "key": "2510",
+          "children": [
+            {
+              "name": "Auto Components",
+              "key": "251010",
+              "children": [
+                {
+                  "name": "Auto Parts & Equipment",
+                  "key": "25101010"
+                },
+                {
+                  "name": "Tires & Rubber",
+                  "key": "25101020"
+                }
+              ]
+            },
+            {
+              "name": "Automobiles",
+              "key": "251020",
+              "children": [
+                {
+                  "name": "Automobile Manufacturers",
+                  "key": "25102010"
+                },
+                {
+                  "name": "Motorcycle Manufacturers",
+                  "key": "25102020"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Consumer Durables & Apparel",
+          "key": "2520",
+          "children": [
+            {
+              "name": "Household Durables",
+              "key": "252010",
+              "children": [
+                {
+                  "name": "Consumer Electronics",
+                  "key": "25201010"
+                },
+                {
+                  "name": "Home Furnishings",
+                  "key": "25201020"
+                },
+                {
+                  "name": "Homebuilding",
+                  "key": "25201030"
+                },
+                {
+                  "name": "Household Appliances",
+                  "key": "25201040"
+                },
+                {
+                  "name": "Housewares & Specialties",
+                  "key": "25201050"
+                }
+              ]
+            },
+            {
+              "name": "Leisure Products",
+              "key": "252020",
+              "children": [
+                {
+                  "name": "Leisure Products",
+                  "key": "25202010"
+                }
+              ]
+            },
+            {
+              "name": "Textiles, Apparel & Luxury Goods",
+              "key": "252030",
+              "children": [
+                {
+                  "name": "Apparel, Accessories & Luxury Goods",
+                  "key": "25203010"
+                },
+                {
+                  "name": "Footwear",
+                  "key": "25203020"
+                },
+                {
+                  "name": "Textiles",
+                  "key": "25203030"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Consumer Services",
+          "key": "2530",
+          "children": [
+            {
+              "name": "Hotels, Restaurants & Leisure",
+              "key": "253010",
+              "children": [
+                {
+                  "name": "Casinos & Gaming",
+                  "key": "25301010"
+                },
+                {
+                  "name": "Hotels, Resorts & Cruise Lines",
+                  "key": "25301020"
+                },
+                {
+                  "name": "Leisure Facilities",
+                  "key": "25301030"
+                },
+                {
+                  "name": "Restaurants",
+                  "key": "25301040"
+                }
+              ]
+            },
+            {
+              "name": "Diversified Consumer Services",
+              "key": "253020",
+              "children": [
+                {
+                  "name": "Education Services",
+                  "key": "25302010"
+                },
+                {
+                  "name": "Specialized Consumer Services",
+                  "key": "25302020"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Retailing",
+          "key": "2550",
+          "children": [
+            {
+              "name": "Distributors",
+              "key": "255010",
+              "children": [
+                {
+                  "name": "Distributors",
+                  "key": "25501010"
+                }
+              ]
+            },
+            {
+              "name": "Internet & Direct Marketing Retail",
+              "key": "255020",
+              "children": [
+                {
+                  "name": "Internet & Direct Marketing Retail",
+                  "key": "25502020"
+                }
+              ]
+            },
+            {
+              "name": "Multiline Retail",
+              "key": "255030",
+              "children": [
+                {
+                  "name": "Department Stores",
+                  "key": "25503010"
+                },
+                {
+                  "name": "General Merchandise Stores",
+                  "key": "25503020"
+                }
+              ]
+            },
+            {
+              "name": "Specialty Retail",
+              "key": "255040",
+              "children": [
+                {
+                  "name": "Apparel Retail",
+                  "key": "25504010"
+                },
+                {
+                  "name": "Computer & Electronics Retail",
+                  "key": "25504020"
+                },
+                {
+                  "name": "Home Improvement Retail",
+                  "key": "25504030"
+                },
+                {
+                  "name": "Specialty Stores",
+                  "key": "25504040"
+                },
+                {
+                  "name": "Automotive Retail",
+                  "key": "25504050"
+                },
+                {
+                  "name": "Homefurnishing Retail",
+                  "key": "25504060"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Consumer Staples",
+      "key": "30",
+      "children": [
+        {
+          "name": "Food & Staples Retailing",
+          "key": "3010",
+          "children": [
+            {
+              "name": "Food & Staples Retailing",
+              "key": "301010",
+              "children": [
+                {
+                  "name": "Drug Retail",
+                  "key": "30101010"
+                },
+                {
+                  "name": "Food Distributors",
+                  "key": "30101020"
+                },
+                {
+                  "name": "Food Retail",
+                  "key": "30101030"
+                },
+                {
+                  "name": "Hypermarkets & Super Centers",
+                  "key": "30101040"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Food, Beverage & Tobacco",
+          "key": "3020",
+          "children": [
+            {
+              "name": "Beverages",
+              "key": "302010",
+              "children": [
+                {
+                  "name": "Brewers",
+                  "key": "30201010"
+                },
+                {
+                  "name": "Distillers & Vintners",
+                  "key": "30201020"
+                },
+                {
+                  "name": "Soft Drinks",
+                  "key": "30201030"
+                }
+              ]
+            },
+            {
+              "name": "Food Products",
+              "key": "302020",
+              "children": [
+                {
+                  "name": "Agricultural Products",
+                  "key": "30202010"
+                },
+                {
+                  "name": "Packaged Foods & Meats",
+                  "key": "30202030"
+                }
+              ]
+            },
+            {
+              "name": "Tobacco",
+              "key": "302030",
+              "children": [
+                {
+                  "name": "Tobacco",
+                  "key": "30203010"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Household & Personal Products",
+          "key": "3030",
+          "children": [
+            {
+              "name": "Household Products",
+              "key": "303010",
+              "children": [
+                {
+                  "name": "Household Products",
+                  "key": "30301010"
+                }
+              ]
+            },
+            {
+              "name": "Personal Products",
+              "key": "303020",
+              "children": [
+                {
+                  "name": "Personal Products",
+                  "key": "30302010"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Health Care",
+      "key": "35",
+      "children": [
+        {
+          "name": "Health Care Equipment & Services",
+          "key": "3510",
+          "children": [
+            {
+              "name": "Health Care Equipment & Supplies",
+              "key": "351010",
+              "children": [
+                {
+                  "name": "Health Care Equipment",
+                  "key": "35101010"
+                },
+                {
+                  "name": "Health Care Supplies",
+                  "key": "35101020"
+                }
+              ]
+            },
+            {
+              "name": "Health Care Providers & Services",
+              "key": "351020",
+              "children": [
+                {
+                  "name": "Health Care Distributors",
+                  "key": "35102010"
+                },
+                {
+                  "name": "Health Care Services",
+                  "key": "35102015"
+                },
+                {
+                  "name": "Health Care Facilities",
+                  "key": "35102020"
+                },
+                {
+                  "name": "Managed Health Care",
+                  "key": "35102030"
+                }
+              ]
+            },
+            {
+              "name": "Health Care Technology",
+              "key": "351030",
+              "children": [
+                {
+                  "name": "Health Care Technology",
+                  "key": "35103010"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Pharmaceuticals, Biotechnology & Life Sciences",
+          "key": "3520",
+          "children": [
+            {
+              "name": "Biotechnology",
+              "key": "352010",
+              "children": [
+                {
+                  "name": "Biotechnology",
+                  "key": "35201010"
+                }
+              ]
+            },
+            {
+              "name": "Pharmaceuticals",
+              "key": "352020",
+              "children": [
+                {
+                  "name": "Pharmaceuticals",
+                  "key": "35202010"
+                }
+              ]
+            },
+            {
+              "name": "Life Sciences Tools & Services",
+              "key": "352030",
+              "children": [
+                {
+                  "name": "Life Sciences Tools & Services",
+                  "key": "35203010"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Financials",
+      "key": "40",
+      "children": [
+        {
+          "name": "Banks",
+          "key": "4010",
+          "children": [
+            {
+              "name": "Banks",
+              "key": "401010",
+              "children": [
+                {
+                  "name": "Diversified Banks",
+                  "key": "40101010"
+                },
+                {
+                  "name": "Regional Banks",
+                  "key": "40101015"
+                }
+              ]
+            },
+            {
+              "name": "Thrifts & Mortgage Finance",
+              "key": "401020",
+              "children": [
+                {
+                  "name": "Thrifts & Mortgage Finance",
+                  "key": "40102010"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Diversified Financials",
+          "key": "4020",
+          "children": [
+            {
+              "name": "Diversified Financial Services",
+              "key": "402010",
+              "children": [
+                {
+                  "name": "Other Diversified Financial Services",
+                  "key": "40201020"
+                },
+                {
+                  "name": "Multi-Sector Holdings",
+                  "key": "40201030"
+                },
+                {
+                  "name": "Specialized Finance",
+                  "key": "40201040"
+                }
+              ]
+            },
+            {
+              "name": "Consumer Finance",
+              "key": "402020",
+              "children": [
+                {
+                  "name": "Consumer Finance",
+                  "key": "40202010"
+                }
+              ]
+            },
+            {
+              "name": "Capital Markets",
+              "key": "402030",
+              "children": [
+                {
+                  "name": "Asset Management & Custody Banks",
+                  "key": "40203010"
+                },
+                {
+                  "name": "Investment Banking & Brokerage",
+                  "key": "40203020"
+                },
+                {
+                  "name": "Diversified Capital Markets",
+                  "key": "40203030"
+                },
+                {
+                  "name": "Financial Exchanges & Data",
+                  "key": "40203040"
+                }
+              ]
+            },
+            {
+              "name": "Mortgage Real Estate Investment Trusts (REITs)",
+              "key": "402040",
+              "children": [
+                {
+                  "name": "Mortgage REITs",
+                  "key": "40204010"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Insurance",
+          "key": "4030",
+          "children": [
+            {
+              "name": "Insurance",
+              "key": "403010",
+              "children": [
+                {
+                  "name": "Insurance Brokers",
+                  "key": "40301010"
+                },
+                {
+                  "name": "Life & Health Insurance",
+                  "key": "40301020"
+                },
+                {
+                  "name": "Multi-line Insurance",
+                  "key": "40301030"
+                },
+                {
+                  "name": "Property & Casualty Insurance",
+                  "key": "40301040"
+                },
+                {
+                  "name": "Reinsurance",
+                  "key": "40301050"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Information Technology",
+      "key": "45",
+      "children": [
+        {
+          "name": "Software & Services",
+          "key": "4510",
+          "children": [
+            {
+              "name": "IT Services",
+              "key": "451020",
+              "children": [
+                {
+                  "name": "IT Consulting & Other Services",
+                  "key": "45102010"
+                },
+                {
+                  "name": "Data Processing & Outsourced Services",
+                  "key": "45102020"
+                },
+                {
+                  "name": "Internet Services & Infrastructure",
+                  "key": "45102030"
+                }
+              ]
+            },
+            {
+              "name": "Software",
+              "key": "451030",
+              "children": [
+                {
+                  "name": "Application Software",
+                  "key": "45103010"
+                },
+                {
+                  "name": "Systems Software",
+                  "key": "45103020"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Technology Hardware & Equipment",
+          "key": "4520",
+          "children": [
+            {
+              "name": "Communications Equipment",
+              "key": "452010",
+              "children": [
+                {
+                  "name": "Communications Equipment",
+                  "key": "45201020"
+                }
+              ]
+            },
+            {
+              "name": "Technology Hardware, Storage & Peripherals",
+              "key": "452020",
+              "children": [
+                {
+                  "name": "Technology Hardware, Storage & Peripherals",
+                  "key": "45202030"
+                }
+              ]
+            },
+            {
+              "name": "Electronic Equipment, Instruments & Components",
+              "key": "452030",
+              "children": [
+                {
+                  "name": "Electronic Equipment & Instruments",
+                  "key": "45203010"
+                },
+                {
+                  "name": "Electronic Components",
+                  "key": "45203015"
+                },
+                {
+                  "name": "Electronic Manufacturing Services",
+                  "key": "45203020"
+                },
+                {
+                  "name": "Technology Distributors",
+                  "key": "45203030"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Semiconductors & Semiconductor Equipment",
+          "key": "4530",
+          "children": [
+            {
+              "name": "Semiconductors & Semiconductor Equipment",
+              "key": "453010",
+              "children": [
+                {
+                  "name": "Semiconductor Equipment",
+                  "key": "45301010"
+                },
+                {
+                  "name": "Semiconductors",
+                  "key": "45301020"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Communication Services",
+      "key": "50",
+      "children": [
+        {
+          "name": "Telecommunication Services",
+          "key": "5010",
+          "children": [
+            {
+              "name": "Diversified Telecommunication Services",
+              "key": "501010",
+              "children": [
+                {
+                  "name": "Alternative Carriers",
+                  "key": "50101010"
+                },
+                {
+                  "name": "Integrated Telecommunication Services",
+                  "key": "50101020"
+                }
+              ]
+            },
+            {
+              "name": "Wireless Telecommunication Services",
+              "key": "501020",
+              "children": [
+                {
+                  "name": "Wireless Telecommunication Services",
+                  "key": "50102010"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Media & Entertainment",
+          "key": "5020",
+          "children": [
+            {
+              "name": "Media",
+              "key": "502010",
+              "children": [
+                {
+                  "name": "Advertising",
+                  "key": "50201010"
+                },
+                {
+                  "name": "Broadcasting",
+                  "key": "50201020"
+                },
+                {
+                  "name": "Cable & Satellite",
+                  "key": "50201030"
+                },
+                {
+                  "name": "Publishing",
+                  "key": "50201040"
+                }
+              ]
+            },
+            {
+              "name": "Entertainment",
+              "key": "502020",
+              "children": [
+                {
+                  "name": "Movies & Entertainment",
+                  "key": "50202010"
+                },
+                {
+                  "name": "Interactive Home Entertainment",
+                  "key": "50202020"
+                }
+              ]
+            },
+            {
+              "name": "Interactive Media & Services",
+              "key": "502030",
+              "children": [
+                {
+                  "name": "Interactive Media & Services",
+                  "key": "50203010"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Utilities",
+      "key": "55",
+      "children": [
+        {
+          "name": "Utilities",
+          "key": "5510",
+          "children": [
+            {
+              "name": "Electric Utilities",
+              "key": "551010",
+              "children": [
+                {
+                  "name": "Electric Utilities",
+                  "key": "55101010"
+                }
+              ]
+            },
+            {
+              "name": "Gas Utilities",
+              "key": "551020",
+              "children": [
+                {
+                  "name": "Gas Utilities",
+                  "key": "55102010"
+                }
+              ]
+            },
+            {
+              "name": "Multi-Utilities",
+              "key": "551030",
+              "children": [
+                {
+                  "name": "Multi-Utilities",
+                  "key": "55103010"
+                }
+              ]
+            },
+            {
+              "name": "Water Utilities",
+              "key": "551040",
+              "children": [
+                {
+                  "name": "Water Utilities",
+                  "key": "55104010"
+                }
+              ]
+            },
+            {
+              "name": "Independent Power and Renewable Electricity Producers",
+              "key": "551050",
+              "children": [
+                {
+                  "name": "Independent Power Producers & Energy Traders",
+                  "key": "55105010"
+                },
+                {
+                  "name": "Renewable Electricity",
+                  "key": "55105020"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Real Estate",
+      "key": "60",
+      "children": [
+        {
+          "name": "Real Estate",
+          "key": "6010",
+          "children": [
+            {
+              "name": "Equity Real Estate Investment Trusts (REITs)",
+              "key": "601010",
+              "children": [
+                {
+                  "name": "Diversified REITs",
+                  "key": "60101010"
+                },
+                {
+                  "name": "Industrial REITs",
+                  "key": "60101020"
+                },
+                {
+                  "name": "Hotel & Resort REITs",
+                  "key": "60101030"
+                },
+                {
+                  "name": "Office REITs",
+                  "key": "60101040"
+                },
+                {
+                  "name": "Health Care REITs",
+                  "key": "60101050"
+                },
+                {
+                  "name": "Residential REITs",
+                  "key": "60101060"
+                },
+                {
+                  "name": "Retail REITs",
+                  "key": "60101070"
+                },
+                {
+                  "name": "Specialized REITs",
+                  "key": "60101080"
+                }
+              ]
+            },
+            {
+              "name": "Real Estate Management & Development",
+              "key": "601020",
+              "children": [
+                {
+                  "name": "Diversified Real Estate Activities",
+                  "key": "60102010"
+                },
+                {
+                  "name": "Real Estate Operating Companies",
+                  "key": "60102020"
+                },
+                {
+                  "name": "Real Estate Development",
+                  "key": "60102030"
+                },
+                {
+                  "name": "Real Estate Services",
+                  "key": "60102040"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
