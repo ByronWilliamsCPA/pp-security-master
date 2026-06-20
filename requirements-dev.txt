@@ -51,7 +51,7 @@ colorama==0.4.6
     #   pytest
 colorlog==6.10.1
     # via nox
-commitizen==4.16.2
+commitizen==4.16.3
 coverage==7.14.1
     # via pytest-cov
 cryptography==49.0.0
