@@ -13,11 +13,18 @@ database:
 * :class:`PPXMLImportService` maps a :class:`ParsedClient` onto ORM rows and
   persists them through a session.
 
-Scope (walking skeleton, 2026-06-19): client configuration, securities with
-full price history, accounts, portfolios, and bookmarks. The transaction graph
-(``account-transaction`` / ``portfolio-transaction`` with ``crossEntry``
-linkage and positional ``security[N]`` references) is intentionally NOT imported
-yet. See ``docs/project/ROADMAP_2026-06-19.md`` Phase C for the follow-up.
+Scope (2026-06-20): client configuration, securities with full price history,
+accounts, portfolios, bookmarks, and the by-value account-transactions with
+their fee/tax units (positional ``security[N]`` references resolved).
+
+PP serializes transactions with XStream object-identity references: a
+transaction is defined once by value, and every later appearance is an empty
+``reference="..."`` pointer. This importer keeps the by-value account
+transactions and skips the reference pointers. Importing the full transaction
+graph (portfolio transactions, which live inside account ``crossEntry`` blocks,
+and the cross-entry linkage between the two) requires resolving those XStream
+references and is the next increment. Only ``cross_entry_type`` is recorded for
+now. See ``docs/project/ROADMAP_2026-06-19.md`` Phase C and ADR-014.
 """
 
 from __future__ import annotations
@@ -25,6 +32,7 @@ from __future__ import annotations
 import uuid as uuid_module
 from dataclasses import dataclass, field
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -39,13 +47,19 @@ else:
 from security_master.storage.models import SecurityMaster
 from security_master.storage.pp_models import (
     PPAccount,
+    PPAccountTransaction,
     PPBookmark,
     PPClientConfig,
     PPPortfolio,
     PPSecurityPrice,
+    PPTransactionUnit,
 )
 
 _DEFAULT_FEED = "PP"
+# PP serializes monetary amounts as integer cents and share counts scaled by
+# 1e8. These invert the exporter's ``int(value * scale)`` conversions.
+_PP_AMOUNT_SCALE = Decimal(100)
+_PP_SHARES_SCALE = Decimal(10**8)
 
 
 @dataclass(frozen=True)
@@ -70,14 +84,44 @@ class ParsedSecurity:
     prices: list[ParsedPrice] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class ParsedUnit:
+    """A fee or tax unit attached to a transaction."""
+
+    unit_type: str
+    amount: Decimal
+    currency: str
+
+
+@dataclass
+class ParsedTransaction:
+    """An account-level transaction parsed from XML.
+
+    ``security_position`` is the 1-based index from a positional security
+    reference (``securities/security[N]``); it is resolved to a security id
+    during persistence. ``None`` when the transaction has no security.
+    """
+
+    uuid: str
+    transaction_date: date
+    amount: Decimal
+    shares: Decimal
+    transaction_type: str
+    currency_code: str = "USD"
+    security_position: int | None = None
+    cross_entry_type: str | None = None
+    units: list[ParsedUnit] = field(default_factory=list)
+
+
 @dataclass
 class ParsedAccount:
-    """A top-level deposit account."""
+    """A top-level deposit account with its transactions."""
 
     uuid: str
     name: str
     currency_code: str = "USD"
     is_retired: bool = False
+    transactions: list[ParsedTransaction] = field(default_factory=list)
 
 
 @dataclass
@@ -126,6 +170,8 @@ class ImportSummary:
     accounts: int = 0
     portfolios: int = 0
     bookmarks: int = 0
+    account_transactions: int = 0
+    transaction_units: int = 0
 
 
 def _parse_bool(text: str | None) -> bool:
@@ -181,12 +227,97 @@ def _parse_portfolio(elem: ET.Element) -> ParsedPortfolio:
     )
 
 
+def _parse_security_position(elem: ET.Element) -> int | None:
+    """Extract the 1-based index from a positional ``<security reference=...>``.
+
+    PP references a security as ``.../securities/security[N]``. Returns N, or
+    None when the transaction has no security reference.
+    """
+    security_elem = elem.find("security")
+    if security_elem is None:
+        return None
+    reference = security_elem.get("reference")
+    if reference is None or "[" not in reference:
+        return None
+    index_text = reference.rsplit("[", 1)[-1].rstrip("]")
+    return int(index_text) if index_text.isdigit() else None
+
+
+def _parse_unit(elem: ET.Element) -> ParsedUnit | None:
+    """Parse a single ``<unit>`` (fee/tax) element, or None when malformed."""
+    amount_elem = elem.find("amount")
+    if amount_elem is None:
+        return None
+    raw_amount = amount_elem.get("amount")
+    if raw_amount is None:
+        return None
+    return ParsedUnit(
+        unit_type=elem.get("type") or "",
+        amount=Decimal(raw_amount) / _PP_AMOUNT_SCALE,
+        currency=amount_elem.get("currency") or "USD",
+    )
+
+
+def _parse_account_transaction(elem: ET.Element) -> ParsedTransaction | None:
+    """Parse a single ``<account-transaction>`` element.
+
+    Returns None for XStream reference pointers (``<account-transaction
+    reference="..."/>``, which carry no content) and for any element missing the
+    required uuid/date/amount.
+    """
+    if elem.get("reference") is not None:
+        return None
+
+    uuid_text = _text(elem, "uuid")
+    date_text = _text(elem, "date")
+    amount_text = _text(elem, "amount")
+    if uuid_text is None or date_text is None or amount_text is None:
+        return None
+
+    cross_entry = elem.find("crossEntry")
+    units = [
+        unit
+        for unit_elem in elem.findall("units/unit")
+        if (unit := _parse_unit(unit_elem)) is not None
+    ]
+    shares_text = _text(elem, "shares") or "0"
+    return ParsedTransaction(
+        uuid=uuid_text,
+        # PP serializes the date as ``YYYY-MM-DDT00:00``; keep the date part.
+        transaction_date=date.fromisoformat(date_text.split("T", 1)[0]),
+        amount=Decimal(amount_text) / _PP_AMOUNT_SCALE,
+        shares=Decimal(shares_text) / _PP_SHARES_SCALE,
+        transaction_type=_text(elem, "type") or "",
+        currency_code=_text(elem, "currencyCode") or "USD",
+        security_position=_parse_security_position(elem),
+        cross_entry_type=cross_entry.get("class") if cross_entry is not None else None,
+        units=units,
+    )
+
+
+def _parse_account(elem: ET.Element) -> ParsedAccount:
+    """Parse a top-level ``<account>`` including its account-transactions."""
+    transactions = [
+        txn
+        for txn_elem in elem.findall("transactions/account-transaction")
+        if (txn := _parse_account_transaction(txn_elem)) is not None
+    ]
+    return ParsedAccount(
+        uuid=_text(elem, "uuid") or "",
+        name=_text(elem, "name") or "",
+        currency_code=_text(elem, "currencyCode") or "USD",
+        is_retired=_parse_bool(_text(elem, "isRetired")),
+        transactions=transactions,
+    )
+
+
 def parse_client(xml_content: str) -> ParsedClient:
     """Parse a PP ``client.xml`` string into a :class:`ParsedClient`.
 
-    Pure function: no database access and no side effects. Only the supported
-    subset is parsed (config, securities, accounts, portfolios, bookmarks);
-    transactions and watchlists are ignored.
+    Pure function: no database access and no side effects. Parses config,
+    securities with prices, accounts with their account-transactions and units,
+    portfolios, and bookmarks. Portfolio-transactions (nested in account
+    cross-entries via XStream references) and watchlists are not parsed.
 
     Args:
         xml_content: The full XML document as a string.
@@ -215,14 +346,7 @@ def parse_client(xml_content: str) -> ParsedClient:
     # Skip degenerate placeholder entries that carry no uuid (the PP export can
     # contain an empty <account/> / <portfolio/> with no identity or name).
     client.accounts = [
-        ParsedAccount(
-            uuid=_text(a, "uuid") or "",
-            name=_text(a, "name") or "",
-            currency_code=_text(a, "currencyCode") or "USD",
-            is_retired=_parse_bool(_text(a, "isRetired")),
-        )
-        for a in root.findall("accounts/account")
-        if _text(a, "uuid")
+        _parse_account(a) for a in root.findall("accounts/account") if _text(a, "uuid")
     ]
     client.portfolios = [
         _parse_portfolio(p)
@@ -290,11 +414,20 @@ class PPXMLImportService:
         summary = ImportSummary(config_version=client.version)
 
         self._persist_config(client, config_name)
-        summary.securities, summary.prices = self._persist_securities(client)
+        summary.securities, summary.prices, position_to_id = self._persist_securities(
+            client
+        )
         account_uuid_to_id = self._persist_accounts(client)
         summary.accounts = len(account_uuid_to_id)
         summary.portfolios = self._persist_portfolios(client, account_uuid_to_id)
         summary.bookmarks = self._persist_bookmarks(client)
+        summary.account_transactions, summary.transaction_units = (
+            self._persist_account_transactions(
+                client,
+                account_uuid_to_id,
+                position_to_id,
+            )
+        )
 
         self.session.flush()
         return summary
@@ -320,8 +453,15 @@ class PPXMLImportService:
             ),
         )
 
-    def _persist_securities(self, client: ParsedClient) -> tuple[int, int]:
-        """Persist securities and their prices. Returns (securities, prices).
+    def _persist_securities(
+        self,
+        client: ParsedClient,
+    ) -> tuple[int, int, dict[int, int]]:
+        """Persist securities and prices.
+
+        Returns ``(securities, prices, position_to_id)`` where
+        ``position_to_id`` maps the 1-based security position to its database id,
+        used to resolve transactions' positional security references.
 
         Prices are only inserted for newly created securities. When a security
         already exists (matched by ISIN), its price history is assumed already
@@ -330,9 +470,11 @@ class PPXMLImportService:
         """
         security_count = 0
         price_count = 0
-        for parsed in client.securities:
+        position_to_id: dict[int, int] = {}
+        for position, parsed in enumerate(client.securities, start=1):
             security, created = self._get_or_create_security(parsed)
             self.session.flush()  # assign security.id for the price FK
+            position_to_id[position] = security.id
             security_count += 1
             if not created:
                 continue
@@ -346,7 +488,7 @@ class PPXMLImportService:
                     ),
                 )
                 price_count += 1
-        return security_count, price_count
+        return security_count, price_count, position_to_id
 
     def _get_or_create_security(
         self,
@@ -450,3 +592,75 @@ class PPXMLImportService:
             )
             count += 1
         return count
+
+    def _persist_account_transactions(
+        self,
+        client: ParsedClient,
+        account_uuid_to_id: dict[str, int],
+        position_to_id: dict[int, int],
+    ) -> tuple[int, int]:
+        """Persist account-transactions and their units (idempotent by uuid).
+
+        Returns ``(transactions, units)``. Cross-entry linkage to portfolio
+        transactions is not reconstructed yet; only ``cross_entry_type`` is
+        recorded. Returns counts of newly inserted rows.
+        """
+        transaction_count = 0
+        unit_count = 0
+        for parsed_account in client.accounts:
+            account_id = account_uuid_to_id.get(parsed_account.uuid)
+            if account_id is None:
+                continue
+            for parsed_txn in parsed_account.transactions:
+                created, units_added = self._persist_one_account_transaction(
+                    parsed_txn,
+                    account_id,
+                    position_to_id,
+                )
+                transaction_count += created
+                unit_count += units_added
+        return transaction_count, unit_count
+
+    def _persist_one_account_transaction(
+        self,
+        parsed_txn: ParsedTransaction,
+        account_id: int,
+        position_to_id: dict[int, int],
+    ) -> tuple[int, int]:
+        """Persist one account-transaction with its units. Returns (txn, units)."""
+        txn_uuid = uuid_module.UUID(parsed_txn.uuid)
+        existing = (
+            self.session.query(PPAccountTransaction).filter_by(uuid=txn_uuid).first()
+        )
+        if existing is not None:
+            return 0, 0
+
+        security_id = None
+        if parsed_txn.security_position is not None:
+            security_id = position_to_id.get(parsed_txn.security_position)
+
+        transaction = PPAccountTransaction(
+            account_id=account_id,
+            uuid=txn_uuid,
+            transaction_date=parsed_txn.transaction_date,
+            currency_code=parsed_txn.currency_code,
+            amount=parsed_txn.amount,
+            security_id=security_id,
+            shares=parsed_txn.shares,
+            transaction_type=parsed_txn.transaction_type,
+            cross_entry_type=parsed_txn.cross_entry_type,
+        )
+        self.session.add(transaction)
+        self.session.flush()  # assign transaction.id for the unit FK
+
+        for parsed_unit in parsed_txn.units:
+            self.session.add(
+                PPTransactionUnit(
+                    transaction_id=transaction.id,
+                    transaction_type="ACCOUNT",
+                    unit_type=parsed_unit.unit_type,
+                    amount=parsed_unit.amount,
+                    currency_code=parsed_unit.currency,
+                ),
+            )
+        return 1, len(parsed_txn.units)

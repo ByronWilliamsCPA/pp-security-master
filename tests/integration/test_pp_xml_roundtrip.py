@@ -3,14 +3,15 @@
 Imports the committed sample PP backup into a real PostgreSQL database, asserts
 the persisted entity counts, then exports via :class:`PPXMLExportService` and
 asserts the exported document round-trips the supported entities (securities,
-prices, accounts, portfolios).
+prices, accounts, portfolios, and by-value account-transactions).
 
 Requires a PostgreSQL database via the ``DATABASE_URL`` environment variable;
 the test skips when it is not set. Runs in CI's integration-tests job (which
 provisions a postgres:17 service) and against any local ephemeral Postgres.
 
-Scope note: the importer does not yet load the transaction graph, so this test
-asserts round-trip fidelity only for the supported entity subset.
+Scope note: portfolio transactions and cross-entry linkage (serialized via
+XStream references) are not yet imported, so this test asserts round-trip
+fidelity only for the supported entity subset.
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ from security_master.patch.pp_xml_import import PPXMLImportService
 from security_master.storage.models import Base, SecurityMaster
 from security_master.storage.pp_models import (
     PPAccount,
+    PPAccountTransaction,
     PPBookmark,
     PPPortfolio,
     PPSecurityPrice,
@@ -53,6 +55,8 @@ _EXPECTED_PRICES = 53207
 _EXPECTED_ACCOUNTS = 3
 _EXPECTED_PORTFOLIOS = 2
 _EXPECTED_BOOKMARKS = 18
+# 2 by-value account-transactions; the other 246 slots are XStream references.
+_EXPECTED_ACCOUNT_TRANSACTIONS = 2
 
 
 @pytest.fixture
@@ -94,6 +98,7 @@ def test_import_then_export_roundtrip(session: Session) -> None:
     assert summary.accounts == _EXPECTED_ACCOUNTS
     assert summary.portfolios == _EXPECTED_PORTFOLIOS
     assert summary.bookmarks == _EXPECTED_BOOKMARKS
+    assert summary.account_transactions == _EXPECTED_ACCOUNT_TRANSACTIONS
 
     # Database reflects the import.
     assert session.query(SecurityMaster).count() == _EXPECTED_SECURITIES
@@ -101,6 +106,7 @@ def test_import_then_export_roundtrip(session: Session) -> None:
     assert session.query(PPAccount).count() == _EXPECTED_ACCOUNTS
     assert session.query(PPPortfolio).count() == _EXPECTED_PORTFOLIOS
     assert session.query(PPBookmark).count() == _EXPECTED_BOOKMARKS
+    assert session.query(PPAccountTransaction).count() == _EXPECTED_ACCOUNT_TRANSACTIONS
 
     # Export from the same session and assert the supported entities round-trip:
     # the exported document must reproduce exactly what the import persisted.
@@ -112,6 +118,10 @@ def test_import_then_export_roundtrip(session: Session) -> None:
     assert len(root.findall("accounts/account")) == summary.accounts
     assert len(root.findall("portfolios/portfolio")) == summary.portfolios
     assert len(root.findall(".//price")) == summary.prices
+    assert (
+        len(root.findall("accounts/account/transactions/account-transaction"))
+        == summary.account_transactions
+    )
 
 
 def test_import_is_idempotent_for_securities(session: Session) -> None:

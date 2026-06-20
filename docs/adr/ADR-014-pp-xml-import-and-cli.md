@@ -51,15 +51,31 @@ that loop work end to end.
    mapper error on a soft-polymorphic key. Both defects were latent because no
    prior test initialized the mappers against a real database.
 
+6. **Transactions are serialized with XStream references; import the by-value
+   ones first.** PP serializes the transaction graph using XStream
+   object-identity references: each transaction is written once by value, and
+   every later appearance is an empty `reference="..."` pointer. In the sample,
+   the first account has 248 `<account-transaction>` slots, but only 2 are real
+   definitions; the other 246 are pointers, and the portfolio transactions live
+   nested inside the account transactions' `<crossEntry>` blocks. The importer
+   parses and persists the by-value account-transactions (with their fee/tax
+   units and positional `security[N]` references resolved) and skips the
+   pointers. Importing portfolio transactions and reconstructing the cross-entry
+   linkage requires a relative-reference resolver (parent map plus `../..` XPath
+   interpretation) and is the next increment; for now only `cross_entry_type` is
+   recorded.
+
 ## Consequences
 
 - A working vertical slice exists: `alembic upgrade head` then `pp-master
   import-xml` then `pp-master export-xml` round-trips the supported entities on
   the committed 3.4 MB sample (18 securities, 53,207 prices, 3 accounts, 2
-  portfolios, 18 bookmarks).
-- The transaction graph is the next increment and will reuse the parse/persist
-  split. Until then, exported backups omit transactions.
+  portfolios, 18 bookmarks, 2 account-transactions).
+- The remaining transaction work is bounded and specified: resolve XStream
+  references to import portfolio transactions and link cross-entries. It reuses
+  the parse/persist split.
 - The importer is idempotent: securities match by ISIN, accounts and portfolios
-  by uuid, bookmarks by label and pattern, so re-import does not duplicate rows.
+  by uuid, bookmarks by label and pattern, and account-transactions by uuid, so
+  re-import does not duplicate rows.
 - Alembic migrations live in `sql/versions/` and are excluded from Ruff (they
   are generated code).

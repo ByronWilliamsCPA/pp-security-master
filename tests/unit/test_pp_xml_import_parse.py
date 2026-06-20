@@ -9,6 +9,7 @@ behavior are covered by the integration suite.
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -31,6 +32,10 @@ _EXPECTED_PRICES = 53207
 _EXPECTED_ACCOUNTS = 3
 _EXPECTED_PORTFOLIOS = 2
 _EXPECTED_BOOKMARKS = 18
+# The account has 248 <account-transaction> slots, but 246 are empty XStream
+# reference pointers (<account-transaction reference="..."/>); only 2 are real
+# by-value definitions. The parser keeps the 2 real ones. See ADR-014.
+_EXPECTED_ACCOUNT_TRANSACTIONS = 2
 
 
 @pytest.fixture(scope="module")
@@ -90,6 +95,31 @@ def test_account_fields(parsed_sample: ParsedClient) -> None:
     assert account.name == "Base 70/30"
     assert account.currency_code == "USD"
     assert account.is_retired is False
+
+
+@pytest.mark.unit
+def test_parses_account_transactions(parsed_sample: ParsedClient) -> None:
+    """Every top-level account-transaction is parsed across all accounts."""
+    total = sum(len(a.transactions) for a in parsed_sample.accounts)
+    assert total == _EXPECTED_ACCOUNT_TRANSACTIONS
+
+
+@pytest.mark.unit
+def test_account_transaction_fields(parsed_sample: ParsedClient) -> None:
+    """A known account-transaction maps its fields and converts amount/shares."""
+    by_uuid = {
+        txn.uuid: txn
+        for account in parsed_sample.accounts
+        for txn in account.transactions
+    }
+    txn = by_uuid["06f012e2-7cc6-4eff-ad0d-acbd57f771bf"]
+    assert txn.transaction_type == "BUY"
+    assert txn.transaction_date == date(2023, 11, 6)
+    # XML amount is integer cents: 94850 -> 948.50.
+    assert txn.amount == Decimal("948.50")
+    # Positional security reference securities/security[11].
+    assert txn.security_position == 11
+    assert txn.cross_entry_type == "buysell"
 
 
 @pytest.mark.unit
