@@ -1,7 +1,7 @@
 # ADR-005: External API Integration Strategy
 
 **Date**: 2025-08-22  
-**Status**: Accepted  
+**Status**: Deferred (accepted in principle; not yet implemented as of 2026-06-19)  
 **Deciders**: Byron, Development Team  
 **Consulted**: OpenFIGI API Documentation, Alpha Vantage Rate Limits, Securities Classification Requirements  
 **Informed**: Data Quality Team, Infrastructure Team  

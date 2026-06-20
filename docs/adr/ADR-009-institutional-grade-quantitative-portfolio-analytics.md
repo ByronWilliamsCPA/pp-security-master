@@ -1,9 +1,11 @@
 # ADR-009: Institutional-Grade Quantitative Portfolio Analytics
 
-**Status:** Accepted  
+**Status:** Deferred (accepted in principle; not yet implemented as of 2026-06-19)  
 **Date:** 2025-01-22  
 **Deciders:** Development Team, Product Owner  
 **Technical Story:** Implementation of advanced quantitative analytics for institutional-quality portfolio management
+
+> **Feasibility note (2026-06-19):** This decision assumes cross-language library integration (JavaScript, Excel, C#). That assumption is under review for a single-language Python + uv project and may be revised before implementation.
 
 ## Context
 

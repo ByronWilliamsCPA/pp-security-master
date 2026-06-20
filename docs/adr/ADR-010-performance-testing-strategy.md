@@ -258,7 +258,7 @@ class LoadTestingFramework:
    pgbench -c 20 -j 4 -T 300 pp_security_master
    
    # Custom stress test with realistic workload
-   poetry run python -m tests.performance.database_stress_test \
+   uv run python -m tests.performance.database_stress_test \
        --concurrent-workers 20 \
        --test-duration 1800 \
        --transaction-rate 100
@@ -378,13 +378,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run Unit Performance Tests
-        run: poetry run pytest -m "performance and not slow"
+        run: uv run pytest -m "performance and not slow"
       
       - name: Run Component Performance Tests  
-        run: poetry run pytest -m "performance and component"
+        run: uv run pytest -m "performance and component"
         
       - name: Performance Regression Check
-        run: poetry run python scripts/performance_regression_check.py
+        run: uv run python scripts/performance_regression_check.py
 ```
 
 **Production Monitoring**:
