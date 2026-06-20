@@ -501,7 +501,8 @@ def setup_test_environment():
     test_env = {
         "TESTING": "true",
         "LOG_LEVEL": "DEBUG",
-        "DATABASE_URL": "postgresql://test_user:test_pass@localhost:5432/test_db",
+        # Test-only credentials matching the CI postgres service; not a secret.
+        "DATABASE_URL": "postgresql://test_user:test_password@localhost:5432/test_db",  # pragma: allowlist secret
         "OPENFIGI_API_KEY": "test_api_key",
         "OPENFIGI_BASE_URL": "https://api.openfigi.com/v3",
     }
