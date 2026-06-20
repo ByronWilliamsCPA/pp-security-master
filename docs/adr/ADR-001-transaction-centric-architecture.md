@@ -125,9 +125,9 @@ Raw Institution Data → Institution Tables → Consolidated Views → PP Export
 
 ## Related Decisions
 
-- **ADR-002**: Portfolio Performance Backup and Restoration (Accepted)
+- **ADR-002**: Portfolio Performance Complete Backup Restoration Capability (Accepted)
 - **ADR-003**: Securities Master Data Sourcing Hierarchy (Deferred)  
-- **ADR-004**: Data Quality Validation Framework (Accepted)
+- **ADR-004**: Data Quality and Validation Framework (Accepted)
 
 ## References
 
