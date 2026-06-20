@@ -109,7 +109,7 @@ iniconfig==2.3.0
     # via pytest
 interrogate==1.7.0
 ipdb==0.13.13
-ipython==9.13.0
+ipython==9.14.1
     # via ipdb
 ipython-pygments-lexers==1.1.1
     # via ipython
