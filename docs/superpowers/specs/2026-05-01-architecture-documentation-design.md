@@ -51,7 +51,8 @@ peer documents.
 
 - PlantUML for complex structural diagrams (ER, component architecture, deployment topology,
   observability stack, integration tier hierarchy): stored as `.puml` source files in
-  `docs/architecture/diagrams/` and rendered via CI or locally.
+  `docs/architecture/diagrams/` and rendered locally. CI-based rendering is a later
+  enhancement and is out of scope for this spec (see Out of Scope).
 - Mermaid for flow and sequence diagrams: embedded inline in the `.md` files so they render
   natively on GitHub without additional tooling.
 
@@ -81,7 +82,7 @@ docs/architecture/
 ├── 01-system-context.md         # C4 Level 1: external actors and system boundary
 ├── 02-components.md             # C4 Level 2: internal modules and services
 ├── 03-data-model.md             # Full ER diagram and schema narrative
-├── 04-data-flows.md             # All 8 data flows with diagrams
+├── 04-data-flows.md             # 8 data flows (7 with diagrams, 1 prose-only)
 ├── 05-deployment.md             # Unraid infrastructure topology
 ├── 06-integrations.md           # External API tier hierarchy and caching strategy
 ├── 07-observability.md          # Metrics, logging, tracing, and alerting stack

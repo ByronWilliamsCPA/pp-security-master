@@ -107,7 +107,7 @@ Thumbs.db
 
 # qlty runtime directories (qlty.toml is committed; runtime artifacts are not)
 .qlty/*
+!.qlty/qlty.toml
 
 # Superpowers brainstorm session files
 .superpowers/
-!.qlty/qlty.toml
