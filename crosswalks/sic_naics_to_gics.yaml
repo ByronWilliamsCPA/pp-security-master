@@ -1,0 +1,36 @@
+# SIC / NAICS industry code -> GICS sector code. ADR-016 E3.
+#
+# Free sector-data fallback (ADR-015) for securities where no provider GICS is
+# available: derive a GICS sector from the issuer's SIC or NAICS code.
+#
+# INCOMPLETE SEED. The full SIC->GICS and NAICS->GICS concordance is hundreds
+# of rows; populate from the authoritative sources below rather than by hand:
+#   - SIC: US SEC / OSHA SIC division and major-group tables.
+#   - NAICS: US Census Bureau NAICS sector tables.
+# Each entry maps a code PREFIX (SIC major group = 2 digits; NAICS sector =
+# 2 digits) to a GICS sector code. Longest-prefix match wins at lookup time.
+#
+# GICS codes validated against industries-gics-sectors.taxonomy.json by
+# tests/unit/test_classification_crosswalks.py.
+
+version: 1
+complete: false
+
+# SIC major-group prefix (2-digit) -> GICS sector. Seed subset.
+by_sic_prefix:
+  "13": "10"  # Oil & Gas Extraction -> Energy
+  "28": "35"  # Chemicals & Allied (incl. pharma) -> Health Care / Materials (REVIEW)
+  "29": "10"  # Petroleum Refining -> Energy
+  "60": "40"  # Depository Institutions -> Financials
+  "63": "40"  # Insurance Carriers -> Financials
+  "73": "45"  # Business Services (software) -> Information Technology
+  "80": "35"  # Health Services -> Health Care
+
+# NAICS sector prefix (2-digit) -> GICS sector. Seed subset.
+by_naics_prefix:
+  "11": "30"  # Agriculture -> Consumer Staples (REVIEW)
+  "21": "10"  # Mining, Quarrying, Oil & Gas -> Energy / Materials (REVIEW)
+  "22": "55"  # Utilities -> Utilities
+  "52": "40"  # Finance & Insurance -> Financials
+  "54": "45"  # Professional/Technical (incl. software) -> Information Technology
+  "62": "35"  # Health Care & Social Assistance -> Health Care

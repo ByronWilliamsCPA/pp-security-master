@@ -1,0 +1,27 @@
+# PP "Type of Security" key -> CFI (ISO 10962) category letter. ADR-016 E3.
+#
+# CFI codes are 6 characters; the first character is the category. Type of
+# security alone resolves only the category letter. The remaining five
+# characters (group + four attributes: form, payment, etc.) need per-instrument
+# data and are out of scope here. CFI is the canonical instrument-type spine
+# per ADR-015.
+#
+# Category letters used here:
+#   E Equities
+#   C Collective investment vehicles (funds, ETFs)
+#   D Debt instruments
+#   O Listed options
+#   T Referential instruments (indices, currencies)
+#
+# Tested against type-of-security.taxonomy.json keys by
+# tests/unit/test_classification_crosswalks.py.
+
+version: 1
+by_type_of_security:
+  Stock: "E"     # Equities
+  Fund: "C"      # Collective investment vehicles
+  ETF: "C"       # Collective investment vehicles (exchange-traded)
+  Bond: "D"      # Debt instruments
+  Option: "O"    # Listed options
+  Index: "T"     # Referential instruments (indices)
+  Currency: "T"  # Referential instruments (currencies)
