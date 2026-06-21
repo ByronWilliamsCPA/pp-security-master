@@ -256,7 +256,7 @@ requests==2.34.2
     #   cachecontrol
     #   detect-secrets
     #   pip-audit
-rich==14.3.4
+rich==15.0.0
     # via
     #   bandit
     #   pip-audit
