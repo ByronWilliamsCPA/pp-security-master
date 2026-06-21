@@ -59,7 +59,7 @@ jobs:
       fail-fast: false
     services:
       postgres:
-        image: postgres:17
+        image: postgres:17@sha256:2203e6282d9e7de7c24d7da234e2a744fb325df366a3fd8ed940e8abbee39527
         env:
           POSTGRES_PASSWORD: test_password
           POSTGRES_USER: test_user

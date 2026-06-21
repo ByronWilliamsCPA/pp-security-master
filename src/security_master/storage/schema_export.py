@@ -809,18 +809,27 @@ def export_schema_files() -> None:
     export_dir = Path("schema_exports")
     export_dir.mkdir(exist_ok=True)
 
-    # Export PostgreSQL DDL
-    (export_dir / "security_master_schema.sql").write_text(generate_postgres_ddl())
+    # Export PostgreSQL DDL. Explicit UTF-8 encoding is required: the Mermaid and
+    # PlantUML diagrams contain non-ASCII characters (e.g. the U+2192 arrow), and
+    # write_text() otherwise uses the platform default codec (cp1252 on Windows),
+    # which cannot encode them and raises UnicodeEncodeError.
+    (export_dir / "security_master_schema.sql").write_text(
+        generate_postgres_ddl(), encoding="utf-8"
+    )
 
     # Export dbdiagram.io DBML
-    (export_dir / "security_master_schema.dbml").write_text(generate_dbdiagram_schema())
+    (export_dir / "security_master_schema.dbml").write_text(
+        generate_dbdiagram_schema(), encoding="utf-8"
+    )
 
     # Export Mermaid ER diagram for VS Code
-    (export_dir / "security_master_schema.md").write_text(generate_mermaid_er_diagram())
+    (export_dir / "security_master_schema.md").write_text(
+        generate_mermaid_er_diagram(), encoding="utf-8"
+    )
 
     # Export PlantUML ER diagram for VS Code
     (export_dir / "security_master_schema.puml").write_text(
-        generate_plantuml_er_diagram(),
+        generate_plantuml_er_diagram(), encoding="utf-8"
     )
 
 
