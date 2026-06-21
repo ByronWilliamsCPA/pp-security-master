@@ -96,6 +96,7 @@ def sqlite_session() -> Generator[Session, None, None]:
     # Imported lazily so table classes register on Base.metadata before
     # create_all; pp_models and transaction_models are otherwise unused here.
     from security_master.storage import (  # noqa: F401
+        entity,
         pp_models,
         transaction_models,
     )
