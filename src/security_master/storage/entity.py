@@ -17,12 +17,19 @@ from .models import Base
 # entity_type -> default IRS tax form. Constrained to the five forms the
 # Byron Williams CPA master chart of accounts reports against (1040/1065/1120/
 # 990/1041); see ADR-016 and the COA "Types" sheet.
+# #ASSUME entity_type -> tax_form mapping matches the master COA "Types" sheet.
+#   A wrong form drives the entity's downstream ABOR/tax grouping.
+#   #VERIFY against the COA "Types" sheet whenever a new entity_type is added.
+# #EDGE s_corp and c_corp both map to 1120: the COA buckets both corporate
+#   returns under the five reported forms and does not separate 1120-S. This is
+#   deliberate; #VERIFY before splitting them if the COA ever distinguishes
+#   1120-S, because tax_form alone cannot then recover entity_type.
 ENTITY_TYPE_TAX_FORMS: dict[str, str] = {
     "individual": "1040",
     "sole_proprietor": "1040",
     "partnership": "1065",
     "llc": "1065",
-    "s_corp": "1120",
+    "s_corp": "1120",  # see #EDGE above: 1120 covers both S- and C-corp
     "c_corp": "1120",
     "nonprofit": "990",
     "trust": "1041",
@@ -117,7 +124,9 @@ class LegalEntity(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     # e.g. individual, llc, s_corp, c_corp, partnership, trust, nonprofit.
     entity_type: Mapped[str] = mapped_column(String(30), nullable=False)
-    # IRS form this entity reports on; defaults via default_tax_form_for().
+    # IRS form this entity reports on. Caller-supplied: pass
+    # tax_form=default_tax_form_for(entity_type) at construction; there is no
+    # column default, so an omitted value persists as NULL.
     tax_form: Mapped[str | None] = mapped_column(String(10))
     status: Mapped[str] = mapped_column(String(20), default="active")
 

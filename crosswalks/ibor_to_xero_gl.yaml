@@ -9,6 +9,14 @@
 # Seed mapping. Entries marked REVIEW are the holding-intent / structure
 # ambiguities ADR-016 flagged (e.g. a public REIT books differently than direct
 # property; a strategy held as a fund books to Mutual Funds). Refine per client.
+#
+# #ASSUME (financial) each classification books to the GL code listed here. A
+#   wrong code mis-states the ABOR financial statements. #VERIFY every mapping,
+#   and especially each REVIEW-tagged line, against the master COA before this
+#   crosswalk drives any posting; treat the seed as draft, not authoritative.
+# #EDGE the `unresolved` list has no GL assignment yet; a holding in those
+#   sleeves books nowhere automatically. #VERIFY the cash/MMF GL codes land in
+#   the master COA before relying on automatic GL assignment for them.
 
 version: 1
 
