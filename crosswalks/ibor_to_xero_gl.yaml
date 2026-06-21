@@ -1,0 +1,62 @@
+# IBOR classification -> Xero GL account crosswalk (ADR-016, Phase E2).
+#
+# Maps an IBOR holding's classification to the 8-digit Xero GL account code it
+# books to in the ABOR. Resolution order: by_brx_plus (most specific) wins;
+# otherwise fall back to by_type_of_security. Every code here must exist as a
+# leaf key in taxonomies/accounting-xero-gl.taxonomy.json (enforced by
+# tests/unit/test_ibor_to_xero_gl_crosswalk.py).
+#
+# Seed mapping. Entries marked REVIEW are the holding-intent / structure
+# ambiguities ADR-016 flagged (e.g. a public REIT books differently than direct
+# property; a strategy held as a fund books to Mutual Funds). Refine per client.
+
+version: 1
+
+# Fallback: PP "Type of Security" key -> GL code.
+by_type_of_security:
+  Stock: "14201400"     # Investment in Publicly Traded Securities
+  ETF: "14201400"
+  Fund: "14201000"      # Investment in Mutual Funds
+  Bond: "14201400"
+  Option: "14201400"
+  Index: "14201400"
+  Currency: "14201900"  # REVIEW: FX/currency holdings; Other Investments
+
+# Preferred: BRX-Plus key -> GL code. Overrides by_type_of_security.
+by_brx_plus:
+  # Equity sleeves -> publicly traded securities (funds re-resolve via type).
+  AC.EQUITY.US.CORE_BETA: "14201400"
+  AC.EQUITY.US.FACTORS_STYLES: "14201400"
+  AC.EQUITY.US.STYLE_SIZE: "14201400"
+  AC.EQUITY.INTL.DEV: "14201400"
+  AC.EQUITY.INTL.EM: "14201400"
+  AC.EQUITY.SECTOR_THEMATIC: "14201400"
+  # Fixed income -> publicly traded securities (marketable debt).
+  AC.FI.CORE_AGG: "14201400"
+  AC.FI.TSYS.SHORT: "14201400"
+  AC.FI.TSYS.INTERMEDIATE: "14201400"
+  AC.FI.TSYS.LONG: "14201400"
+  AC.FI.TIPS: "14201400"
+  AC.FI.IG_CREDIT: "14201400"
+  AC.FI.HIGH_YIELD: "14201400"
+  AC.FI.MUNICIPALS: "14201400"
+  AC.FI.INTL_EM: "14201400"
+  # Alternatives.
+  AC.ALTS.RE: "15111200"          # REVIEW: direct property; public REITs -> 14201400
+  AC.ALTS.COMM: "14201900"        # Other Investments
+  AC.ALTS.MKT_NEUTRAL: "14201000" # REVIEW: fund-structured -> Mutual Funds
+  AC.ALTS.SYS_MULTI: "14201000"   # REVIEW: fund-structured -> Mutual Funds
+  AC.ALTS.BUFFER: "14201400"      # defined-outcome ETFs are exchange-traded
+  AC.ALTS.PRIV.EQUITY: "14201300" # Investment in Private Equity
+  AC.ALTS.PRIV.CREDIT: "14201100" # REVIEW: Partnerships vs Other Investments
+  AC.ALTS.CRYPTO.BTC: "14121100"  # Digital Assets - Cost Basis
+  AC.ALTS.CRYPTO.ETH: "14121100"
+  AC.ALTS.CRYPTO.DIV: "14121100"
+
+# Classifications with no confirmed 8-digit investment GL code yet. These need
+# the cash/MMF GL codes from the master COA before they can be mapped; until
+# then a holding in these sleeves has no automatic GL assignment.
+unresolved:
+  - AC.CASH.MONEY_MARKET   # cash equivalents GL code TBD
+  - AC.CASH.TBILLS         # short-term investment GL code TBD
+  - AC.CASH.SHORT_TERM     # short-term investment GL code TBD

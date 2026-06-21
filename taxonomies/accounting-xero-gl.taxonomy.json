@@ -1,0 +1,42 @@
+{
+  "name": "Accounting (Xero GL)",
+  "color": "#cdb4db",
+  "categories": [
+    {
+      "name": "Crypto Wallets",
+      "children": [
+        { "name": "Crypto Wallet - Cold Storage", "key": "11101000" },
+        { "name": "Crypto Wallet - Hot Storage", "key": "11101100" }
+      ]
+    },
+    {
+      "name": "Digital Assets",
+      "children": [
+        { "name": "Digital Assets - Cost Basis", "key": "14121100" },
+        { "name": "Digital Assets - Fair-Value Adj.", "key": "14121200" },
+        { "name": "Digital Assets - Accum. Impairment", "key": "14131100" }
+      ]
+    },
+    {
+      "name": "Long-term Investments",
+      "children": [
+        { "name": "Investment in Mutual Funds", "key": "14201000" },
+        { "name": "Investment in Partnerships", "key": "14201100" },
+        { "name": "Investment in Private Companies", "key": "14201200" },
+        { "name": "Investment in Private Equity", "key": "14201300" },
+        { "name": "Investment in Publicly Traded Securities", "key": "14201400" },
+        { "name": "Investments (Restricted)", "key": "14201500" },
+        { "name": "Investments (Unrestricted)", "key": "14201600" },
+        { "name": "Marketable Securities - Cost", "key": "14201700" },
+        { "name": "Marketable Securities - FV Adj.", "key": "14201800" },
+        { "name": "Other Investments", "key": "14201900" }
+      ]
+    },
+    {
+      "name": "Investment Property",
+      "children": [
+        { "name": "Investment Property - Buildings", "key": "15111200" }
+      ]
+    }
+  ]
+}
