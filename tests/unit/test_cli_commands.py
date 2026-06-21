@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 import pytest
 from click.testing import CliRunner
 from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.pool import StaticPool
 
 from security_master import cli
@@ -125,7 +126,10 @@ def test_import_xml_without_schema_rolls_back_on_error(
     result = CliRunner().invoke(cli.app, ["import-xml", str(xml_file)])
 
     assert result.exit_code != 0
-    assert result.exception is not None
+    # Pin the expected failure: an empty database raises OperationalError
+    # ("no such table"), driving the command's except/rollback path. A bare
+    # `is not None` check would also pass on an unrelated TypeError/ImportError.
+    assert isinstance(result.exception, OperationalError)
 
 
 def test_import_broker_without_schema_errors_on_empty_db(
@@ -144,7 +148,10 @@ def test_import_broker_without_schema_errors_on_empty_db(
     result = CliRunner().invoke(cli.app, ["import-broker", str(broker_file)])
 
     assert result.exit_code != 0
-    assert result.exception is not None
+    # Pin the expected failure: an empty database raises OperationalError
+    # ("no such table"), driving the command's except/rollback path. A bare
+    # `is not None` check would also pass on an unrelated TypeError/ImportError.
+    assert isinstance(result.exception, OperationalError)
 
 
 def test_import_broker_rejects_unknown_institution(tmp_path: Path) -> None:

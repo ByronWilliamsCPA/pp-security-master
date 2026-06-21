@@ -8,6 +8,8 @@ for PostgreSQL so the tests need no external database.
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
@@ -84,26 +86,34 @@ def test_get_session_factory_returns_sessions() -> None:
 
 
 def test_get_db_session_commits_on_success() -> None:
-    """The generator yields a session and commits when consumed cleanly."""
-    engine = database.create_db_engine(_SQLITE_URL)
-    database.create_tables(engine)
-    factory = database.get_session_factory(engine)
+    """On clean exit the generator commits once, never rolls back, and closes.
 
-    generator = database.get_db_session(factory)
-    session = next(generator)
-    assert isinstance(session, Session)
+    A spy session pins the contract directly: asserting ``isinstance`` and
+    ``StopIteration`` alone would still pass if the generator silently dropped
+    the ``commit()`` call, so the commit/rollback/close calls are asserted.
+    """
+    session = MagicMock(spec=Session)
+
+    generator = database.get_db_session(lambda: session)
+    yielded = next(generator)
+    assert yielded is session
     with pytest.raises(StopIteration):
-        next(generator)  # drives commit + close in the generator's tail
-    engine.dispose()
+        next(generator)  # drives the commit + close in the generator's tail
+
+    session.commit.assert_called_once()
+    session.rollback.assert_not_called()
+    session.close.assert_called_once()
 
 
 def test_get_db_session_rolls_back_and_reraises() -> None:
-    """An exception thrown into the generator triggers rollback and re-raises."""
-    engine = database.create_db_engine(_SQLITE_URL)
-    factory = database.get_session_factory(engine)
+    """An exception thrown in rolls back once, never commits, re-raises, and closes."""
+    session = MagicMock(spec=Session)
 
-    generator = database.get_db_session(factory)
+    generator = database.get_db_session(lambda: session)
     next(generator)
     with pytest.raises(ValueError, match="boom"):
         generator.throw(ValueError("boom"))
-    engine.dispose()
+
+    session.rollback.assert_called_once()
+    session.commit.assert_not_called()
+    session.close.assert_called_once()
