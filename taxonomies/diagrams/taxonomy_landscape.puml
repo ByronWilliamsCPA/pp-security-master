@@ -1,0 +1,47 @@
+@startuml taxonomy_landscape
+!pragma layout smetana
+' Source of truth: taxonomies/*.taxonomy.json ; catalog: docs/project/PP_TAXONOMY_CATALOG.md
+' The seven Portfolio Performance taxonomies this project uses, by origin.
+
+title Portfolio Performance Taxonomies In Use (7 of 8 PP templates + 1 custom)
+
+skinparam shadowing false
+skinparam rectangle {
+    BorderColor #888888
+    FontColor #222222
+}
+skinparam card {
+    BorderColor #FF6666
+    BackgroundColor #FFF3F3
+    FontColor #222222
+}
+
+legend top
+  Each card: taxonomy name | levels | classification nodes
+  Key scheme = the portfolioClassificationKey namespace PP uses for auto-assignment.
+endlegend
+
+rectangle "Built-in PP templates (created via File > New > Taxonomy)" as builtin #EFF6FF {
+    card "Asset Classes\n1 level / 5 nodes\nkeys: CASH, EQUITY, DEBT, ..." as ac
+    card "Industries (GICS)\n4 levels / 262 nodes\nkeys: GICS numeric codes" as gics
+    card "Industries (GICS, Sectors)\n1 level / 11 nodes\nkeys: 10..60" as gicss
+    card "Asset Allocation (Kommer)\n2 levels / 11 nodes\nkeys: K001, K002, K0xx" as aa
+    card "Regions (MSCI)\n3 levels / 100 nodes\nkeys: RW/REM/RFM/RSM, country_XX" as msci
+    card "Type of Security\n1 level / 7 nodes\nkeys: Stock, Fund, ETF, ..." as tos
+}
+
+rectangle "Custom (imported via File > Import > Import taxonomy)" as custom #F3FFF3 {
+    card "**BRX-Plus (Byron)**\n2 levels / 32 nodes\nkeys: AC.* dot-notation" as brx #E3F7E0
+}
+
+note bottom of builtin
+  Not used: Industry (proprietary V-codes), Regions (non-MSCI).
+  Built-ins can be created from PP's template picker or imported from JSON.
+end note
+
+note bottom of custom
+  The one taxonomy that must be imported.
+  Detail: brx_plus_taxonomy.puml
+end note
+
+@enduml

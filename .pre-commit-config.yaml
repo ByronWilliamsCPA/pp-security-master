@@ -103,6 +103,15 @@ repos:
         types: [python]
         pass_filenames: false
 
+      # Taxonomy contract gate: validate PP taxonomy JSON against the importer
+      # contract (required name, hex colors, unique keys, weight bounds/sum).
+      - id: validate-taxonomies
+        name: Validate PP taxonomy JSON
+        language: system
+        entry: uv run python scripts/validate_taxonomy_json.py
+        files: '^(taxonomies/.*\.taxonomy\.json|scripts/validate_taxonomy_json\.py)$'
+        pass_filenames: false
+
       # Em-dash guard: block the U+2014 character in all text files
       - id: no-em-dash
         name: No em-dashes
