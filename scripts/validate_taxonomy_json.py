@@ -26,6 +26,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import cast
 
@@ -133,8 +134,16 @@ def _check_instruments(instruments: list[object], errors: list[str]) -> None:
         if entry is None:
             errors.append(f"{where}: instrument must be an object")
             continue
-        if _as_dict(entry.get("identifiers")) is None:
+        identifiers = _as_dict(entry.get("identifiers"))
+        if identifiers is None:
             errors.append(f"{where}: 'identifiers' object is required")
+        elif not identifiers:
+            # #CRITICAL (data integrity): an empty identifiers object gives the
+            # PP importer no key to match the assignment to a security (it matches
+            # on ISIN, ticker, WKN, then name), so the assignment silently binds
+            # to nothing. #VERIFY require at least one identifier entry here;
+            # per-field validation lands with Phase C instrument data.
+            errors.append(f"{where}: 'identifiers' must not be empty")
         assignments = _as_list(entry.get("categories", []))
         if assignments is None:
             errors.append(f"{where}: 'categories' must be a list")
@@ -147,10 +156,21 @@ def _check_instruments(instruments: list[object], errors: list[str]) -> None:
                 errors.append(f"{a_where}: assignment must be an object")
                 continue
             weight = assignment.get("weight", 100)
-            if not isinstance(weight, (int, float)) or not 0 <= weight <= 100:
+            # #EDGE (data integrity): bool is a subclass of int, so True/False
+            # would pass the numeric check and silently count as 1/0.
+            # #VERIFY reject bool explicitly before the numeric range test.
+            if (
+                isinstance(weight, bool)
+                or not isinstance(weight, (int, float))
+                or not 0 <= weight <= 100
+            ):
                 errors.append(f"{a_where}: weight {weight!r} must be within 0-100")
             else:
                 total += float(weight)
+        # #ASSUME (data integrity): a small epsilon absorbs float rounding so
+        # weights intended to sum to 100 are not rejected for sub-1e-3 drift.
+        # #VERIFY 100.0001 is loose enough for accumulated float error yet tight
+        # enough to catch a genuine over-100 sum.
         if total > 100.0001:
             errors.append(f"{where}: assignment weights sum to {total} (> 100)")
 
@@ -192,7 +212,7 @@ def validate_file(path: Path) -> int:
     keys: list[str] = []
     node_count = _walk_categories(categories, "categories", keys, errors)
 
-    duplicates = sorted({k for k in keys if keys.count(k) > 1})
+    duplicates = sorted(key for key, n in Counter(keys).items() if n > 1)
     if duplicates:
         errors.append(f"root: duplicate classification keys: {', '.join(duplicates)}")
 
