@@ -5,19 +5,44 @@ an IBOR holding's classification to the ABOR (Xero GL account, CFI category) and
 to GICS. This is the executable half of the ADR-016 identifier contract; the
 human contract lives in ``docs/project/IBOR_ABOR_IDENTIFIER_CONTRACT.md``.
 
-#ASSUME the ``crosswalks/`` reference data sits at the repository root next to
-the package (true in-repo and in editable installs).
-#VERIFY pass an explicit ``base`` directory if the data is relocated or the
-package is installed without the repo tree.
+The reference data is read packaged-first, repo-root-fallback: installed wheels
+carry a copy under ``security_master/crosswalks/`` (shipped via the pyproject
+force-include) and editable / in-repo runs read it from the repo root. Both
+layouts resolve without an explicit ``base``.
+
+#ASSUME the force-include in ``pyproject.toml`` keeps the wheel's
+``security_master/crosswalks/`` copy in sync with the repo-root source.
+#VERIFY a wheel build includes the YAML files (``python -m build`` then inspect
+the wheel) whenever a crosswalk file is added or renamed.
 """
 
 from functools import cache
+from importlib import resources
 from pathlib import Path
 from typing import cast
 
 import yaml
 
-_CROSSWALK_DIR = Path(__file__).resolve().parents[2] / "crosswalks"
+# Editable / in-repo runs read the reference data from the repo root; installed
+# wheels read a copy shipped inside the package (see the force-include in
+# pyproject.toml). _read_crosswalk resolves packaged-first, repo-root-fallback so
+# both layouts work without an explicit base override.
+_REPO_CROSSWALK_DIR = Path(__file__).resolve().parents[2] / "crosswalks"
+
+
+def _read_crosswalk(name: str) -> str:
+    """Read a crosswalk file's text from the packaged copy or the repo root.
+
+    Args:
+        name: File name within the crosswalks directory.
+
+    Returns:
+        The file's UTF-8 text.
+    """
+    packaged = resources.files("security_master") / "crosswalks" / name
+    if packaged.is_file():
+        return packaged.read_text(encoding="utf-8")
+    return (_REPO_CROSSWALK_DIR / name).read_text(encoding="utf-8")
 
 
 @cache
@@ -31,9 +56,12 @@ def _load(name: str, base: str | None = None) -> dict[str, object]:
     Returns:
         The parsed YAML mapping.
     """
-    directory = Path(base) if base is not None else _CROSSWALK_DIR
-    parsed = yaml.safe_load((directory / name).read_text(encoding="utf-8"))
-    return cast("dict[str, object]", parsed)
+    text = (
+        (Path(base) / name).read_text(encoding="utf-8")
+        if base is not None
+        else _read_crosswalk(name)
+    )
+    return cast("dict[str, object]", yaml.safe_load(text))
 
 
 def _section(doc: dict[str, object], key: str) -> dict[str, str]:
@@ -44,9 +72,10 @@ def _section(doc: dict[str, object], key: str) -> dict[str, str]:
         key: The section name to extract.
 
     Returns:
-        The section as a ``dict[str, str]`` (empty if absent).
+        A copy of the section as a ``dict[str, str]`` (empty if absent). A copy
+        is returned so a caller cannot mutate the ``@cache``-shared document.
     """
-    return cast("dict[str, str]", doc.get(key, {}))
+    return dict(cast("dict[str, str]", doc.get(key, {})))
 
 
 def resolve_gl_account(
