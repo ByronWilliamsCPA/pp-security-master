@@ -137,7 +137,7 @@ msgpack==1.2.1
     # via cachecontrol
 nodeenv==1.10.0
     # via pre-commit
-nodejs-wheel-binaries==24.15.0
+nodejs-wheel-binaries==24.16.0
     # via basedpyright
 nox==2026.4.10
 packageurl-python==0.17.6
