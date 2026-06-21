@@ -62,7 +62,7 @@ python-dotenv==1.2.2
     #   pydantic-settings
 pyyaml==6.0.3
     # via pp-security-master
-rich==14.3.4
+rich==15.0.0
     # via pp-security-master
 six==1.17.0
     # via python-dateutil
