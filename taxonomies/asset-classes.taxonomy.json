@@ -1,0 +1,11 @@
+{
+  "name": "Asset Classes",
+  "color": "#a9b098",
+  "categories": [
+    { "name": "Cash", "key": "CASH", "color": "#c437c2" },
+    { "name": "Equity", "key": "EQUITY", "color": "#5757ff" },
+    { "name": "Debt", "key": "DEBT", "color": "#dca122" },
+    { "name": "Real Estate", "key": "REAL_ESTATE", "color": "#fd6a0e" },
+    { "name": "Commodity", "key": "COMMODITY", "color": "#579f57" }
+  ]
+}

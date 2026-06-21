@@ -1,0 +1,41 @@
+@startmindmap brx_plus_taxonomy
+' Source of truth: taxonomies/brx-plus-byron.taxonomy.json
+' Custom Portfolio Performance taxonomy (TAXONOMY_GUIDE.md). 4 sleeves, 28 leaves, 32 nodes.
+' Node labels show display name and the portfolioClassificationKey.
+
+title BRX-Plus (Byron) -- Custom Portfolio Performance Taxonomy
+
+* BRX-Plus (Byron)
+**[#a3f7a5] Equity\n(AC.EQUITY)
+***[#eaf9d9] US Core Beta\n(AC.EQUITY.US.CORE_BETA)
+***[#eaf9d9] US Factors & Styles\n(AC.EQUITY.US.FACTORS_STYLES)
+***[#eaf9d9] US Growth / Value / Size\n(AC.EQUITY.US.STYLE_SIZE)
+***[#eaf9d9] International Developed\n(AC.EQUITY.INTL.DEV)
+***[#eaf9d9] Emerging Markets\n(AC.EQUITY.INTL.EM)
+***[#eaf9d9] Sector / Thematic\n(AC.EQUITY.SECTOR_THEMATIC)
+**[#b790d8] Fixed Income\n(AC.FIXED_INCOME)
+***[#ece1f5] Core Aggregate\n(AC.FI.CORE_AGG)
+***[#ece1f5] Treasuries (Short)\n(AC.FI.TSYS.SHORT)
+***[#ece1f5] Treasuries (Intermediate)\n(AC.FI.TSYS.INTERMEDIATE)
+***[#ece1f5] Treasuries (Long)\n(AC.FI.TSYS.LONG)
+***[#ece1f5] TIPS\n(AC.FI.TIPS)
+***[#ece1f5] Investment Grade Credit\n(AC.FI.IG_CREDIT)
+***[#ece1f5] High Yield\n(AC.FI.HIGH_YIELD)
+***[#ece1f5] Municipals\n(AC.FI.MUNICIPALS)
+***[#ece1f5] International / EM Debt\n(AC.FI.INTL_EM)
+**[#e8fe9c] Alternatives\n(AC.ALTS)
+***[#f6fdd6] Real Estate (Public REITs / Private)\n(AC.ALTS.RE)
+***[#f6fdd6] Commodities (Gold / Broad)\n(AC.ALTS.COMM)
+***[#f6fdd6] Market Neutral / Hedge Fund-Like\n(AC.ALTS.MKT_NEUTRAL)
+***[#f6fdd6] Systematic / Multi-Strategy\n(AC.ALTS.SYS_MULTI)
+***[#f6fdd6] Defined-Outcome / Buffer ETFs\n(AC.ALTS.BUFFER)
+***[#f6fdd6] Private Markets (Equity)\n(AC.ALTS.PRIV.EQUITY)
+***[#f6fdd6] Private Markets (Credit)\n(AC.ALTS.PRIV.CREDIT)
+***[#f6fdd6] Crypto (BTC)\n(AC.ALTS.CRYPTO.BTC)
+***[#f6fdd6] Crypto (ETH)\n(AC.ALTS.CRYPTO.ETH)
+***[#f6fdd6] Crypto (Diversified)\n(AC.ALTS.CRYPTO.DIV)
+**[#c1d8b3] Cash & Cash Equivalents\n(AC.CASH)
+***[#e3eedb] Money Market / Bank Deposits\n(AC.CASH.MONEY_MARKET)
+***[#e3eedb] T-Bills (1-6m)\n(AC.CASH.TBILLS)
+***[#e3eedb] Short-Term Cash Proxies\n(AC.CASH.SHORT_TERM)
+@endmindmap

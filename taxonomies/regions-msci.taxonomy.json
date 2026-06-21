@@ -1,0 +1,442 @@
+{
+  "name": "Regions (MSCI)",
+  "color": "#baebb3",
+  "categories": [
+    {
+      "name": "World",
+      "key": "RW",
+      "children": [
+        {
+          "name": "Americas",
+          "key": "RW1",
+          "children": [
+            {
+              "name": "Canada",
+              "key": "country_CA"
+            },
+            {
+              "name": "United States",
+              "key": "country_US"
+            }
+          ]
+        },
+        {
+          "name": "Europe & Middle East",
+          "key": "RW2",
+          "children": [
+            {
+              "name": "Austria",
+              "key": "country_AT"
+            },
+            {
+              "name": "Belgium",
+              "key": "country_BE"
+            },
+            {
+              "name": "Denmark",
+              "key": "country_DK"
+            },
+            {
+              "name": "Finland",
+              "key": "country_FI"
+            },
+            {
+              "name": "France",
+              "key": "country_FR"
+            },
+            {
+              "name": "Germany",
+              "key": "country_DE"
+            },
+            {
+              "name": "Ireland",
+              "key": "country_IE"
+            },
+            {
+              "name": "Israel",
+              "key": "country_IL"
+            },
+            {
+              "name": "Italy",
+              "key": "country_IT"
+            },
+            {
+              "name": "Netherlands",
+              "key": "country_NL"
+            },
+            {
+              "name": "Norway",
+              "key": "country_NO"
+            },
+            {
+              "name": "Portugal",
+              "key": "country_PT"
+            },
+            {
+              "name": "Spain",
+              "key": "country_ES"
+            },
+            {
+              "name": "Sweden",
+              "key": "country_SE"
+            },
+            {
+              "name": "Switzerland",
+              "key": "country_CH"
+            },
+            {
+              "name": "United Kingdom",
+              "key": "country_GB"
+            }
+          ]
+        },
+        {
+          "name": "Pacific",
+          "key": "RW3",
+          "children": [
+            {
+              "name": "Australia",
+              "key": "country_AU"
+            },
+            {
+              "name": "Hong Kong",
+              "key": "country_HK"
+            },
+            {
+              "name": "Japan",
+              "key": "country_JP"
+            },
+            {
+              "name": "New Zealand",
+              "key": "country_NZ"
+            },
+            {
+              "name": "Singapore",
+              "key": "country_SG"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Emerging Markets Index",
+      "key": "REM",
+      "children": [
+        {
+          "name": "Americas",
+          "key": "REM1",
+          "children": [
+            {
+              "name": "Argentina",
+              "key": "country_AR"
+            },
+            {
+              "name": "Brazil",
+              "key": "country_BR"
+            },
+            {
+              "name": "Chile",
+              "key": "country_CL"
+            },
+            {
+              "name": "Colombia",
+              "key": "country_CO"
+            },
+            {
+              "name": "Mexico",
+              "key": "country_MX"
+            },
+            {
+              "name": "Peru",
+              "key": "country_PE"
+            }
+          ]
+        },
+        {
+          "name": "Europe, Middle East & Africa",
+          "key": "REM2",
+          "children": [
+            {
+              "name": "Czech Republic",
+              "key": "country_CZ"
+            },
+            {
+              "name": "Egypt",
+              "key": "country_EG"
+            },
+            {
+              "name": "Greece",
+              "key": "country_GR"
+            },
+            {
+              "name": "Hungary",
+              "key": "country_HU"
+            },
+            {
+              "name": "Kuwait",
+              "key": "country_KW"
+            },
+            {
+              "name": "Poland",
+              "key": "country_PL"
+            },
+            {
+              "name": "Qatar",
+              "key": "country_QA"
+            },
+            {
+              "name": "Russia",
+              "key": "country_RU"
+            },
+            {
+              "name": "Saudi Arabia",
+              "key": "country_SA"
+            },
+            {
+              "name": "South Africa",
+              "key": "country_ZA"
+            },
+            {
+              "name": "Turkey",
+              "key": "country_TR"
+            },
+            {
+              "name": "United Arab Emirates",
+              "key": "country_AE"
+            }
+          ]
+        },
+        {
+          "name": "Asia",
+          "key": "REM3",
+          "children": [
+            {
+              "name": "China",
+              "key": "country_CN"
+            },
+            {
+              "name": "India",
+              "key": "country_IN"
+            },
+            {
+              "name": "Indonesia",
+              "key": "country_ID"
+            },
+            {
+              "name": "North Korea",
+              "key": "country_KP"
+            },
+            {
+              "name": "South Korea",
+              "key": "country_KR"
+            },
+            {
+              "name": "Malaysia",
+              "key": "country_MY"
+            },
+            {
+              "name": "Pakistan",
+              "key": "country_PK"
+            },
+            {
+              "name": "Philippines",
+              "key": "country_PH"
+            },
+            {
+              "name": "Taiwan",
+              "key": "country_TW"
+            },
+            {
+              "name": "Thailand",
+              "key": "country_TH"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Frontier Markets Index",
+      "key": "RFM",
+      "children": [
+        {
+          "name": "Europe & CIS",
+          "key": "RFM1",
+          "children": [
+            {
+              "name": "Croatia",
+              "key": "country_HR"
+            },
+            {
+              "name": "Estonia",
+              "key": "country_EE"
+            },
+            {
+              "name": "Lithuania",
+              "key": "country_LT"
+            },
+            {
+              "name": "Kazakhstan",
+              "key": "country_KZ"
+            },
+            {
+              "name": "Romania",
+              "key": "country_RO"
+            },
+            {
+              "name": "Serbia",
+              "key": "country_RS"
+            },
+            {
+              "name": "Slovenia",
+              "key": "country_SI"
+            }
+          ]
+        },
+        {
+          "name": "Africa",
+          "key": "RFM2",
+          "children": [
+            {
+              "name": "Kenya",
+              "key": "country_KE"
+            },
+            {
+              "name": "Mauritius",
+              "key": "country_MU"
+            },
+            {
+              "name": "Morocco",
+              "key": "country_MA"
+            },
+            {
+              "name": "Nigeria",
+              "key": "country_NG"
+            },
+            {
+              "name": "Tunisia",
+              "key": "country_TN"
+            },
+            {
+              "name": "WAEMU",
+              "key": "country_WAEMU"
+            }
+          ]
+        },
+        {
+          "name": "Middle East",
+          "key": "RFM3",
+          "children": [
+            {
+              "name": "Bahrain",
+              "key": "country_BH"
+            },
+            {
+              "name": "Jordan",
+              "key": "country_JO"
+            },
+            {
+              "name": "Lebanon",
+              "key": "country_LB"
+            },
+            {
+              "name": "Oman",
+              "key": "country_OM"
+            }
+          ]
+        },
+        {
+          "name": "Asia",
+          "key": "RFM4",
+          "children": [
+            {
+              "name": "Bangladesh",
+              "key": "country_BD"
+            },
+            {
+              "name": "Sri Lanka",
+              "key": "country_LK"
+            },
+            {
+              "name": "Vietnam",
+              "key": "country_VN"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Standalone Markets Index",
+      "key": "RSM",
+      "children": [
+        {
+          "name": "Americas",
+          "key": "RSM1",
+          "children": [
+            {
+              "name": "Jamaica",
+              "key": "country_JM"
+            },
+            {
+              "name": "Panama",
+              "key": "country_PA"
+            },
+            {
+              "name": "Trinidad & Tobago",
+              "key": "country_TT"
+            }
+          ]
+        },
+        {
+          "name": "Europe & CIS",
+          "key": "RSM2",
+          "children": [
+            {
+              "name": "Bosnia Herzegovina",
+              "key": "country_BA"
+            },
+            {
+              "name": "Bulgaria",
+              "key": "country_BG"
+            },
+            {
+              "name": "Malta",
+              "key": "country_MT"
+            },
+            {
+              "name": "Iceland",
+              "key": "country_IS"
+            },
+            {
+              "name": "Ukraine",
+              "key": "country_UA"
+            }
+          ]
+        },
+        {
+          "name": "Africa",
+          "key": "RSM3",
+          "children": [
+            {
+              "name": "Botswana",
+              "key": "country_BW"
+            },
+            {
+              "name": "Zimbabwe",
+              "key": "country_ZW"
+            }
+          ]
+        },
+        {
+          "name": "Middle East",
+          "key": "RSM4",
+          "children": [
+            {
+              "name": "Palestine",
+              "key": "country_PS"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
