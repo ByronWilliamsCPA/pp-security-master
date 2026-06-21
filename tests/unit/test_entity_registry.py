@@ -37,6 +37,22 @@ def test_default_tax_form_for_unknown_type_returns_none() -> None:
     assert default_tax_form_for("cooperative") is None
 
 
+@pytest.mark.parametrize("blank", ["", "   ", "\t"])
+def test_default_tax_form_for_blank_returns_none(blank: str) -> None:
+    """Empty or whitespace-only input normalises to no match and returns None."""
+    assert default_tax_form_for(blank) is None
+
+
+def test_default_tax_form_for_none_raises() -> None:
+    """None is outside the str contract and raises rather than returning None.
+
+    Pinned deliberately: the column is non-nullable so the ORM path never feeds
+    None here, and callers should pass a real entity_type string.
+    """
+    with pytest.raises(AttributeError):
+        default_tax_form_for(None)  # type: ignore[arg-type]
+
+
 def test_client_with_multiple_legal_entities_persists(
     sqlite_session: Session,
 ) -> None:
@@ -121,3 +137,38 @@ def test_repr_includes_key_fields(sqlite_session: Session) -> None:
     assert "Repr Co" in repr(client)
     assert "Repr LLC" in repr(entity)
     assert "1065" in repr(entity)
+
+
+def test_client_name_globally_unique(sqlite_session: Session) -> None:
+    """Two clients cannot share a name (the read path filters by name)."""
+    sqlite_session.add(Client(name="Acme"))
+    sqlite_session.commit()
+    sqlite_session.add(Client(name="Acme"))
+    with pytest.raises(IntegrityError):
+        sqlite_session.commit()
+
+
+def test_xero_crypto_client_id_globally_unique(sqlite_session: Session) -> None:
+    """One xero-crypto Client.id maps to exactly one client (ADR-016 contract)."""
+    shared = "22222222-2222-2222-2222-222222222222"
+    sqlite_session.add(Client(name="Client A", xero_crypto_client_id=shared))
+    sqlite_session.commit()
+    sqlite_session.add(Client(name="Client B", xero_crypto_client_id=shared))
+    with pytest.raises(IntegrityError):
+        sqlite_session.commit()
+
+
+def test_xero_organisation_id_globally_unique(sqlite_session: Session) -> None:
+    """One Xero organisation maps to exactly one legal entity, even across
+    different clients (ADR-016 identifier contract)."""
+    client_a = Client(name="Owner A")
+    client_a.legal_entities.append(
+        LegalEntity(name="E A", entity_type="llc", xero_organisation_id="xero-org-1")
+    )
+    client_b = Client(name="Owner B")
+    client_b.legal_entities.append(
+        LegalEntity(name="E B", entity_type="llc", xero_organisation_id="xero-org-1")
+    )
+    sqlite_session.add_all([client_a, client_b])
+    with pytest.raises(IntegrityError):
+        sqlite_session.commit()

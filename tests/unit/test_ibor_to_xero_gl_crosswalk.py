@@ -30,12 +30,20 @@ def _gl_taxonomy_keys() -> set[str]:
     def walk(nodes: list[object]) -> None:
         for raw in nodes:
             node = cast("dict[str, object]", raw)
+            raw_children = node.get("children")
+            child_nodes = (
+                cast("list[object]", raw_children)
+                if isinstance(raw_children, list)
+                else []
+            )
             key = node.get("key")
-            if isinstance(key, str):
+            # Only leaf nodes carry assignable GL codes. Guarding on the absence
+            # of children stops an intermediate-category key (not a real posting
+            # target) from satisfying the crosswalk drift guard.
+            if isinstance(key, str) and not child_nodes:
                 keys.add(key)
-            children = node.get("children")
-            if isinstance(children, list):
-                walk(cast("list[object]", children))
+            if child_nodes:
+                walk(child_nodes)
 
     walk(cast("list[object]", data.get("categories", [])))
     return keys
@@ -83,5 +91,20 @@ def test_unresolved_entries_are_not_also_mapped() -> None:
     cw = _crosswalk()
     unresolved = set(cast("list[str]", cw.get("unresolved", [])))
     by_brx = cast("dict[str, str]", cw.get("by_brx_plus", {}))
-    overlap = unresolved & set(by_brx)
+    by_type = cast("dict[str, str]", cw.get("by_type_of_security", {}))
+    overlap = unresolved & (set(by_brx) | set(by_type))
     assert not overlap, f"entries both mapped and unresolved: {overlap}"
+
+
+def test_crosswalk_mapping_sections_present() -> None:
+    """Both mapping sections exist, so a renamed key cannot silently skip
+    validation. _mapped_codes() degrades a missing section to an empty mapping,
+    which would let the drift guard pass while validating nothing."""
+    cw = _crosswalk()
+    for section in ("by_type_of_security", "by_brx_plus"):
+        mapping = cw.get(section)
+        assert isinstance(mapping, dict), f"crosswalk section '{section}' is missing"
+        assert mapping, (
+            f"crosswalk section '{section}' is empty; "
+            "the drift guard would validate nothing"
+        )
