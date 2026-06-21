@@ -1,9 +1,9 @@
 # ADR-016: Crosswalk Architecture and IBOR/ABOR Navigation
 
 **Date**: 2026-06-20
-**Status**: Proposed
+**Status**: Accepted
 **Deciders**: Byron, Development Team
-**Consulted**: ADR-003 (Securities Master Data Sourcing Hierarchy), ADR-014 (PP XML Import and CLI), ADR-015 (Classification Source Coverage and Tier-4 Scope), `docs/project/TAXONOMY_GUIDE.md`, `docs/project/PP_TAXONOMY_CATALOG.md`, `tmp/Chart_of_Accounts template.xlsx`, `../xero-crypto`
+**Consulted**: ADR-003 (Securities Master Data Sourcing Hierarchy), ADR-014 (PP XML Import and CLI), ADR-015 (Classification Source Coverage and Tier-4 Scope), `docs/project/TAXONOMY_GUIDE.md`, `docs/project/PP_TAXONOMY_CATALOG.md`, the Xero master chart-of-accounts workbook (external working reference, not version-controlled in this repo), the `xero-crypto` repository (external)
 **Informed**: Storage, Classifier, and Patch layers; xero-crypto
 
 ## Context
@@ -18,8 +18,9 @@ ABOR. The practice must:
 3. Support clients that hold only direct investments (no fund look-through).
 
 ADR-015 and PR #92 established the taxonomy *foundation* (the seven PP taxonomies
-plus the licensing posture) and explicitly deferred the **crosswalk
-architecture** to this ADR. The seven PP taxonomies classify *securities* only;
+plus the licensing posture); ADR-015 deferred the Tier-4 classification mechanism
+and its design to a follow-up ADR, which this ADR fulfills with the **crosswalk
+architecture**. The seven PP taxonomies classify *securities* only;
 per `TAXONOMY_GUIDE.md` they deliberately exclude client and legal-entity logic.
 That exclusion is correct, but it means cross-book and multi-entity navigation
 needs structure that the asset taxonomy alone does not provide.
@@ -54,7 +55,8 @@ testable, plus PP-native taxonomies where in-PP navigation is wanted:
   `SIC/NAICS -> GICS`, `GICS -> BRX-Plus` (the set PR #92 earmarked).
 - **`asset class / type -> Xero GL account code`** (new IBOR to ABOR bridge).
   Realised as an **"Accounting (Xero GL)" PP taxonomy** whose leaf `key` is the
-  8-digit Xero code, backed by a canonical mapping file. This makes ABOR grouping
+  Xero account `code` (an account-code string, 8 digits for most accounts but
+  variable in length, e.g. `1114`), backed by a canonical mapping file. This makes ABOR grouping
   a first-class view inside PP while keeping a machine-usable mapping for
   xero-crypto and Xero. Indicative mapping (from the COA investment accounts):
 
@@ -101,7 +103,7 @@ and BRX-Plus already provides direct sleeves. No fund look-through is required.
 | --- | --- | --- |
 | Instrument | `isin`, `symbol`, `wkn` | asset symbol; crypto `contract_address` + `chain_id` |
 | Holding location | PP account/portfolio | `Wallet.address`; Xero bank/asset account |
-| GL account | "Accounting (Xero GL)" node key | Xero account `code` (8-digit) |
+| GL account | "Accounting (Xero GL)" node key | Xero account `code` (account-code string, variable length) |
 | Legal entity | `pp_portfolio_ref` | `xero_organisation_id` |
 | Client | `Client.id` | `xero_crypto_client_id` |
 
@@ -118,7 +120,7 @@ and BRX-Plus already provides direct sleeves. No fund look-through is required.
 - xero-crypto must expose `Client.id` and `Wallet.address` as stable keys and
   adopt the GL mapping; concrete changes there are a separate repo/PR.
 
-## RAD markers
+<!-- RAD markers -->
 
 - `#ASSUME` one Xero organisation per legal entity (not per client).
   `#VERIFY` against the live Xero org list before building the registry.
@@ -130,9 +132,11 @@ and BRX-Plus already provides direct sleeves. No fund look-through is required.
 
 ## Related Decisions
 
-- ADR-001 (Transaction-Centric Architecture)
+- ADR-001 (Transaction-Centric Architecture): the holdings and entities joined
+  here resolve from the transaction-centric core it established.
 - ADR-003 (Securities Master Data Sourcing Hierarchy)
 - ADR-014 (PP XML Import, CLI, and Round-Trip Strategy)
 - ADR-015 (Classification Source Coverage and Tier-4 Manual Scope)
 - `docs/project/TAXONOMY_GUIDE.md`, `docs/project/PP_TAXONOMY_CATALOG.md`
-- PR #92 (taxonomy foundation, earmarked this ADR for crosswalk architecture)
+- PR #92 (taxonomy foundation; deferred the Tier-4 mechanism design to a
+  follow-up ADR, fulfilled here)
