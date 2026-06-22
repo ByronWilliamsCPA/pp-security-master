@@ -66,3 +66,62 @@ def test_transfer_acats(records) -> None:
     assert tr.symbol is None
     assert tr.security_name == "ACATS"
     assert tr.transaction_date == date(2024, 10, 13)
+
+
+def _wrap(record_xml: str) -> str:
+    """Wrap a single record element in a minimal Flex document."""
+    return (
+        "<FlexQueryResponse><FlexStatements><FlexStatement>"
+        f"{record_xml}"
+        "</FlexStatement></FlexStatements></FlexQueryResponse>"
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.extractor
+def test_cash_missing_dates_raises() -> None:
+    """A CashTransaction with neither settleDate nor reportDate raises."""
+    xml = _wrap(
+        '<CashTransactions><CashTransaction transactionID="1" '
+        'type="Dividends" amount="1.00"/></CashTransactions>'
+    )
+    with pytest.raises(ValueError, match="missing settleDate and reportDate"):
+        parse_ibkr_flex_records(xml)
+
+
+@pytest.mark.unit
+@pytest.mark.extractor
+def test_cash_missing_transaction_id_raises() -> None:
+    """A CashTransaction without transactionID raises a precise error."""
+    xml = _wrap(
+        '<CashTransactions><CashTransaction settleDate="06/01/2024" '
+        'type="Dividends" amount="1.00"/></CashTransactions>'
+    )
+    with pytest.raises(ValueError, match="missing required attribute 'transactionID'"):
+        parse_ibkr_flex_records(xml)
+
+
+@pytest.mark.unit
+@pytest.mark.extractor
+def test_corp_action_missing_report_date_raises() -> None:
+    """A CorporateAction without reportDate raises a precise error."""
+    xml = _wrap(
+        '<CorporateActions><CorporateAction transactionID="2" '
+        'type="TC" amount="1.00"/></CorporateActions>'
+    )
+    with pytest.raises(
+        ValueError, match="missing required date attribute 'reportDate'"
+    ):
+        parse_ibkr_flex_records(xml)
+
+
+@pytest.mark.unit
+@pytest.mark.extractor
+def test_transfer_missing_dates_raises() -> None:
+    """A Transfer with neither date nor settleDate raises."""
+    xml = _wrap(
+        '<Transfers><Transfer transactionID="3" type="ACATS" '
+        'direction="IN"/></Transfers>'
+    )
+    with pytest.raises(ValueError, match="missing date and settleDate"):
+        parse_ibkr_flex_records(xml)

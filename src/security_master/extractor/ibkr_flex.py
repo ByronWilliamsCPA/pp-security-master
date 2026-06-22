@@ -482,49 +482,6 @@ class IBKRFlexImportService:
         )
         return {row[0] for row in rows if row[0] is not None}
 
-    def _persist(
-        self,
-        trades: list[ParsedTrade],
-        source_file: str | None,
-    ) -> ImportSummary:
-        """Persist parsed trades, skipping any whose trade_id already exists.
-
-        Args:
-            trades: Parsed trades to insert.
-            source_file: Source file path to record on each row, or None.
-
-        Returns:
-            An :class:`ImportSummary` describing inserts and skips for the run.
-        """
-        batch_id = self._new_batch_id()
-        summary = ImportSummary(import_batch_id=batch_id, source_file=source_file)
-
-        # De-duplicate before the existence query: a Flex file can repeat a
-        # trade_id (handled below via seen_in_run), and a deduplicated list keeps
-        # the IN (...) parameter count proportional to distinct ids, not rows.
-        candidate_ids = list({t.trade_id for t in trades if t.trade_id is not None})
-        already_present = self._existing_trade_ids(candidate_ids)
-
-        # #CRITICAL: trade_id is the idempotency key (UNIQUE column). Skipping
-        # within a single run as well as against the DB prevents a duplicate
-        # trade_id inside one file from tripping the unique constraint on flush.
-        # #VERIFY: re-importing the same Flex file must leave the row count
-        # unchanged (covered by tests/integration/test_ibkr_flex_import.py).
-        seen_in_run: set[str] = set()
-
-        for trade in trades:
-            tid = trade.trade_id
-            if tid is not None and (tid in already_present or tid in seen_in_run):
-                summary.skipped += 1
-                continue
-            if tid is not None:
-                seen_in_run.add(tid)
-            self.session.add(self._trade_orm(trade, batch_id, source_file))
-            summary.trades += 1
-
-        self.session.commit()
-        return summary
-
     def _persist_records(
         self,
         records: IBKRFlexRecords,
