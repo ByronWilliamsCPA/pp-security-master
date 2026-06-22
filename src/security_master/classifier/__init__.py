@@ -10,6 +10,12 @@ This package is built incrementally across the D3 tasks; exports grow as the
 manual path, chain stubs, and crypto seed land.
 """
 
+from security_master.classifier.chain import (
+    classify_bond,
+    classify_equity,
+    classify_fund,
+    classify_security,
+)
 from security_master.classifier.manual import apply_manual_classification
 from security_master.classifier.taxonomy_lookup import (
     UnknownClassificationValueError,
@@ -32,6 +38,10 @@ __all__ = [
     "ManualAssignment",
     "UnknownClassificationValueError",
     "apply_manual_classification",
+    "classify_bond",
+    "classify_equity",
+    "classify_fund",
+    "classify_security",
     "resolve_brx_plus_sleeve",
     "resolve_gics_sector",
 ]
