@@ -117,6 +117,12 @@ verified empirically, closing open item #4 of the decision guide:
   a human classification (ADR-003 section 4.3). The current schema has only a
   single row-level `data_source` string and no per-classification provenance or
   lock; closing that gap is the load-bearing part of D3.
+  **Status: implemented in Phase D3.** Migration `d3a1c0ffee01` added six columns
+  to `securities_master`: `classification_tier`, `classification_source`,
+  `classification_confidence`, `classification_locked` (NOT NULL, server_default
+  false), `classified_by`, and `classified_at`. `classification_locked` is the
+  integration contract: automated tiers skip locked rows. See ADR-003 section
+  4.3.1 for the full column list and rationale.
 - **CFI instrument-type ingestion and the free-source sector pipeline**
   (OpenFIGI + SIC/NAICS concordance) become defined future-tier work, replacing
   the implicit assumption that GICS data would be sourced directly.
@@ -131,6 +137,11 @@ verified empirically, closing open item #4 of the decision guide:
   never copy MSCI sub-industry descriptive prose; route any GICS-sector
   *assignment* through user-local entry; add a CI check that no committed
   `taxonomies/` or seed file contains identifier-to-licensed-sector rows.
+  **Status: the CI check was implemented in Phase D3** as
+  `scripts/check_no_licensed_assignments.py`, wired as a licensing-guard
+  pre-commit hook. It parses committed YAML/JSON structurally (including PP
+  `instruments` blocks) and blocks any commit that adds identifier-to-GICS
+  assignment data.
 - `#ASSUME` (external resource): the CFI code list is freely redistributable based
   on ISO externalization intent, but SIX attaches no named open-data license.
   `#VERIFY` obtain written redistribution confirmation from `office@cfi-iso.org`

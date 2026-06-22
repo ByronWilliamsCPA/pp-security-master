@@ -137,6 +137,28 @@ We will implement a **four-tier hierarchical data sourcing strategy** for securi
 - **Quality Assurance**: Systematic review of high-value or high-risk classifications
 - **Documentation**: Rationale and supporting evidence for manual overrides
 
+#### **4.3.1 Phase D3 Realization (provenance and override-lock model)**
+
+Phase D3 realized this override capability concretely. The abstract "automated
+override" and "audit trail" requirements above are now backed by six columns on
+the `securities_master` table (migration `d3a1c0ffee01`):
+
+- `classification_tier` (Integer, nullable): the sourcing tier that set the
+  classification; 4 = manual.
+- `classification_source` (String(50), nullable): provenance label, e.g. `manual`.
+- `classification_confidence` (Numeric(3,2), nullable): 0.00-1.00; manual
+  assignments use 1.00.
+- `classification_locked` (Boolean, NOT NULL, server_default false): the
+  load-bearing integration contract. Automated tiers (1-3) MUST skip locked rows
+  so a later automated run cannot silently overwrite a human classification.
+- `classified_by` (String(100), nullable): audit trail (operator).
+- `classified_at` (DateTime, nullable): audit trail (timestamp).
+
+`classification_locked` is the part that makes the four-tier cascade safe: it
+converts "manual overrides automated" from a workflow convention into a schema
+enforced contract. See ADR-015 for the coverage map and licensing posture that
+scope what Tier-4 manual classification covers.
+
 ## Implementation Strategy
 
 ### Data Source Cascade Logic

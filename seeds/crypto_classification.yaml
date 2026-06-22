@@ -1,0 +1,11 @@
+# seeds/crypto_classification.yaml
+# User's own crypto classification scheme (ADR-015 section 4: crypto carries no
+# GICS licensing risk and MAY ship as a committed seed). Values are BRX-Plus
+# leaf keys from brx-plus-byron.taxonomy.json, NOT GICS sectors.
+version: 1
+by_symbol:
+  BTC: AC.ALTS.CRYPTO.BTC
+  ETH: AC.ALTS.CRYPTO.ETH
+# Fallback sleeve, applied only to extra symbols passed explicitly to
+# apply_crypto_seed(); the `crypto-seed` CLI classifies just the symbols above.
+default: AC.ALTS.CRYPTO.DIV
