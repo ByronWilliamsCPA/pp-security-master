@@ -173,6 +173,16 @@ def corp_action_from_element(elem: ET.Element) -> ParsedCorporateAction:
     """Map a ``<CorporateAction>`` element to a ParsedCorporateAction."""
     a = elem.attrib
     description = a.get("actionDescription") or a.get("description") or ""
+    # transaction_date is reportDate (the settled effective date). The element
+    # also carries a dateTime="MM/DD/YYYY;HHMMSS" attribute; it is intentionally
+    # NOT ingested, reportDate is the chosen natural date for Layer 1.
+    # #EDGE (financial / data integrity): amount maps to the inherited
+    # Numeric(15, 2) column, so a sub-cent corporate-action value (e.g.
+    # -122532.667322) rounds to cents (-122532.67). proceeds and realized_pnl
+    # use Numeric(18, 6) and preserve raw precision: the lossless economics live
+    # there, amount is the PP-compatible cents view.
+    # #VERIFY: if exact corporate-action cash effects are needed downstream, read
+    # proceeds/realized_pnl, not amount, or widen amount and add a migration.
     return ParsedCorporateAction(
         transaction_date=_require_date(
             a.get("reportDate"), "reportDate", "CorporateAction"

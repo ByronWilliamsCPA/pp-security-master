@@ -130,6 +130,16 @@ def test_persists_non_trade_records(sqlite_session: Session) -> None:
     assert summary.corporate_actions == 1
     assert summary.transfers == 1
 
+    # Acceptance criterion 2: the record_type discriminator lands per row, and
+    # the transfer's "--" symbol/isin normalize to NULL on persist.
+    rows = {
+        row.record_type: row
+        for row in sqlite_session.query(InteractiveBrokersTransaction).all()
+    }
+    assert set(rows) == {"TRADE", "CASH", "CORP_ACTION", "TRANSFER"}
+    assert rows["TRANSFER"].symbol is None
+    assert rows["TRANSFER"].isin is None
+
     again = service.import_from_string(sample.read_text(encoding="utf-8"))
     assert (
         again.trades,
