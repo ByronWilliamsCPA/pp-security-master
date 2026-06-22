@@ -96,6 +96,7 @@ packages = ["src/security_master"]
 [tool.hatch.build.targets.wheel.force-include]
 "crosswalks" = "security_master/crosswalks"
 "taxonomies" = "security_master/taxonomies"
+"seeds" = "security_master/seeds"
 
 
 [tool.ruff]
