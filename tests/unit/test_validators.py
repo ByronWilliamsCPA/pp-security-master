@@ -33,12 +33,18 @@ _VALID_ISIN = "DE0005140008"
         ("US0378331005", True),  # Apple Inc.
         ("US5949181045", True),  # Microsoft Corp.
         (_VALID_ISIN, True),  # Deutsche Bank AG
+        # Letters in the security body exercise the letter -> two-digit
+        # conversion combined with the Luhn digit-sum reduction.
+        ("AU000000BHP4", True),  # BHP Group, body contains "BHP"
         # Valid payload, wrong check digit -> rejected.
         ("US0378331004", False),  # Apple payload, off-by-one check digit
         ("DE0005140009", False),  # Deutsche Bank payload, wrong check digit
+        ("AU000000BHP3", False),  # BHP body, wrong check digit (letter-body negative)
         # Format failures (gate runs before the check digit).
         ("de0005140008", False),  # lowercase fails the format pattern
         ("DE000514000", False),  # too short
+        ("US03783310055", False),  # too long (13 chars)
+        ("US037833100O", False),  # non-numeric check-digit position
     ],
 )
 def test_validate_isin(isin: str | None, expected: bool) -> None:
