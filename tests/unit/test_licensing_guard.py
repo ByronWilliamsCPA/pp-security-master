@@ -27,3 +27,25 @@ def test_provider_sector_to_gics_is_allowed() -> None:
     # SIC/NAICS/provider keys are NOT security identifiers, so mapping them to GICS is legal.
     text = "by_provider_sector:\n  Technology: '45'\n"
     assert scan_text("crosswalks/provider_sector_to_gics.yaml", text) == []
+
+
+def test_pp_instruments_isin_to_gics_code_is_flagged() -> None:
+    text = '{"instruments":[{"identifiers":{"isin":"US0378331005"},"categories":[{"key":"45","weight":100}]}]}'
+    assert scan_text("taxonomies/evil.taxonomy.json", text)
+
+
+def test_inline_flow_isin_to_gics_is_flagged() -> None:
+    assert scan_text("evil.yaml", "by_isin: {US0378331005: Energy}\n")
+
+
+def test_gics_subcode_is_flagged() -> None:
+    assert scan_text("evil.yaml", "by_isin:\n  US0378331005: '4510'\n")
+
+
+def test_trailing_comment_value_is_flagged() -> None:
+    assert scan_text("evil.yaml", "by_isin:\n  US0378331005: Energy  # sneaky\n")
+
+
+def test_instruments_non_gics_category_is_allowed() -> None:
+    text = '{"instruments":[{"identifiers":{"isin":"US0378331005"},"categories":[{"key":"AC.EQUITY"}]}]}'
+    assert scan_text("taxonomies/ok.taxonomy.json", text) == []
