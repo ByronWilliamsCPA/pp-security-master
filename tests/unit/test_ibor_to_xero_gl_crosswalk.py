@@ -127,14 +127,21 @@ def test_override_gl_codes_are_eight_digit_numeric() -> None:
 
 
 def test_override_entries_declare_a_condition() -> None:
-    """Each override entry must declare at least one selector so it cannot match
-    unconditionally and shadow the default."""
+    """Each override entry must declare at least one NON-NULL selector so it
+    cannot match unconditionally and shadow the default.
+
+    Checking key presence alone is insufficient: `_resolve_override` matches on
+    `entry.get("wrapper")`/`entry.get("holding_intent")`, so an explicit
+    `{wrapper: null, gl: ...}` has the key present yet both selectors resolve to
+    None and the entry matches unconditionally. Mirror the runtime semantics by
+    treating an entry as unconditional when both selector VALUES are None.
+    """
     cw = _crosswalk()
     overrides = cast("dict[str, list[dict[str, str]]]", cw.get("overrides", {}))
     unconditional = {
         key
         for key, entries in overrides.items()
         for e in entries
-        if not ({"wrapper", "holding_intent"} & set(e))
+        if e.get("wrapper") is None and e.get("holding_intent") is None
     }
     assert not unconditional, f"override entries with no condition: {unconditional}"
