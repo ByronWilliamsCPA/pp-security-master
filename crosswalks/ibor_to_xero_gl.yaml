@@ -16,6 +16,10 @@
 #   COA codes. #VERIFY against the master COA before relying on cash GL postings.
 
 version: 1
+# No `complete:` flag is set here, deliberately. Unlike the sibling crosswalks,
+# this financial mapping stays non-authoritative until the books owner verifies
+# every code (cash leaves and REVIEW-line defaults) against the master COA; the
+# flag is withheld rather than set false to make the draft posture explicit.
 
 # Fallback: PP "Type of Security" key -> GL code.
 by_type_of_security:
