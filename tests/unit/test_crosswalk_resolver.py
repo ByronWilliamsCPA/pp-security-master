@@ -1,6 +1,7 @@
 """Unit tests for the IBOR -> ABOR crosswalk resolver (ADR-016, Phase E4)."""
 
 from security_master.crosswalk import (
+    resolve_brx_plus_from_gics,
     resolve_cfi_category,
     resolve_gics_from_provider,
     resolve_gics_from_sic_naics,
@@ -89,3 +90,28 @@ def test_resolve_gics_sic_takes_precedence_over_naics() -> None:
     """When both are supplied, SIC is tried first."""
     assert resolve_gics_from_sic_naics(sic="60", naics="00") == "40"
     assert resolve_gics_from_sic_naics(sic=None, naics="52") == "40"
+
+
+def test_resolve_brx_plus_single_sector() -> None:
+    """A single-sector holding maps to its GICS sector sleeve."""
+    assert (
+        resolve_brx_plus_from_gics("10", is_single_sector=True)
+        == "AC.EQUITY.SECTOR.ENERGY"
+    )
+    assert (
+        resolve_brx_plus_from_gics("45", is_single_sector=True)
+        == "AC.EQUITY.SECTOR.INFO_TECH"
+    )
+
+
+def test_resolve_brx_plus_guardrail_blocks_broad_holdings() -> None:
+    """Broad/factor/region holdings are never auto-assigned from GICS."""
+    assert resolve_brx_plus_from_gics("10", is_single_sector=False) is None
+
+
+def test_resolve_brx_plus_unknown_sector_falls_back() -> None:
+    """An unknown sector code on a single-sector holding falls back to the default."""
+    assert (
+        resolve_brx_plus_from_gics("99", is_single_sector=True)
+        == "AC.EQUITY.SECTOR_THEMATIC"
+    )

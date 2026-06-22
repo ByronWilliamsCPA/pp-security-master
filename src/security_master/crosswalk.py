@@ -242,3 +242,34 @@ def resolve_gics_from_provider(
         "by_provider_sector",
     )
     return mapping.get(provider_sector)
+
+
+def resolve_brx_plus_from_gics(
+    gics_sector: str,
+    *,
+    is_single_sector: bool,
+    base: str | None = None,
+) -> str | None:
+    """Resolve a BRX-Plus sleeve from a GICS sector for a single-sector holding.
+
+    Guardrail: GICS and BRX-Plus are orthogonal. Broad-market, factor, and region
+    holdings span all sectors and are assigned by mandate upstream, so this
+    resolver returns ``None`` unless the caller asserts the holding is
+    single-sector. An unknown sector code falls back to the thematic default.
+
+    Args:
+        gics_sector: A GICS sector code (e.g. ``"45"``).
+        is_single_sector: ``True`` only when the holding is known to be a
+            single-sector/thematic position; otherwise resolution is refused.
+        base: Optional override for the crosswalks directory.
+
+    Returns:
+        The BRX-Plus sleeve key, the thematic default for an unknown sector, or
+        ``None`` when the holding is not single-sector.
+    """
+    if not is_single_sector:
+        return None
+    doc = _load("gics_to_brx_plus.yaml", base)
+    by_sector = _section(doc, "by_gics_sector")
+    default = cast("str", doc.get("default_for_single_sector"))
+    return by_sector.get(gics_sector, default)
