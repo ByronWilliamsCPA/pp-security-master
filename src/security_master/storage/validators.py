@@ -43,11 +43,20 @@ class SecurityDataValidator:
             else:
                 chars.extend(str(ord(char) - ord("A") + 10))
 
+        # ISO 6166 check digit: Luhn (modulus 10 "double-add-double"). Walking
+        # right-to-left over the converted digits, double every second digit and
+        # reduce any two-digit product to its digit sum (e.g. 7*2=14 -> 1+4=5).
+        # For a single decimal digit, subtracting 9 from the doubled value equals
+        # that digit sum, since 2*d in 10..18 maps to (2*d) - 9.
         num_str = "".join(chars)
-        check_sum = sum(
-            int(digit) * (2 if i % 2 == 0 else 1)
-            for i, digit in enumerate(reversed(num_str))
-        )
+        check_sum = 0
+        for i, digit in enumerate(reversed(num_str)):
+            value = int(digit)
+            if i % 2 == 0:
+                value *= 2
+                if value > 9:
+                    value -= 9
+            check_sum += value
 
         return (10 - (check_sum % 10)) % 10 == int(isin[-1])
 

@@ -15,12 +15,11 @@ import pytest
 from security_master.storage.models import SecurityMaster
 from security_master.storage.validators import SecurityDataValidator
 
-# NOTE (characterization): SecurityDataValidator.validate_isin implements a
-# NON-standard check digit (it omits the Luhn digit-sum of doubled products),
-# so it rejects real, spec-valid ISINs such as "US0378331005" and accepts some
-# spec-invalid ones. These tests pin the routine's CURRENT behavior, not the
-# ISO 6166 spec. "DE0005140008" is an ISIN that the current routine accepts and
-# is used to drive the valid-ISIN branches. See skill-observation #548.
+# SecurityDataValidator.validate_isin implements the ISO 6166 check digit
+# (Luhn / modulus 10 "double-add-double"). Doubled products are reduced to
+# their digit sum, so a genuinely spec-valid ISIN validates and an off-by-one
+# check digit is rejected. "DE0005140008" (Deutsche Bank) is a real, valid
+# ISIN reused below to drive the valid-ISIN branches of the scoring helpers.
 _VALID_ISIN = "DE0005140008"
 
 
@@ -30,19 +29,24 @@ _VALID_ISIN = "DE0005140008"
     [
         (None, True),  # optional field
         ("", True),  # optional field
-        (_VALID_ISIN, True),  # accepted by the current check-digit routine
-        ("DE0005140009", False),  # wrong check digit
+        # Real, spec-valid ISINs (correct ISO 6166 Luhn check digit).
+        ("US0378331005", True),  # Apple Inc.
+        ("US5949181045", True),  # Microsoft Corp.
+        (_VALID_ISIN, True),  # Deutsche Bank AG
+        # Valid payload, wrong check digit -> rejected.
+        ("US0378331004", False),  # Apple payload, off-by-one check digit
+        ("DE0005140009", False),  # Deutsche Bank payload, wrong check digit
+        # Format failures (gate runs before the check digit).
         ("de0005140008", False),  # lowercase fails the format pattern
         ("DE000514000", False),  # too short
-        ("US0378331005", False),  # real, spec-valid ISIN the routine rejects (bug)
     ],
 )
 def test_validate_isin(isin: str | None, expected: bool) -> None:
-    """ISIN validation: format gate plus the current (non-standard) check digit.
+    """ISIN validation: format gate plus the ISO 6166 Luhn check digit.
 
-    Characterization test. See module note and skill-observation #548: the
-    routine deviates from ISO 6166, so a genuinely valid ISIN appears as a
-    rejected case here on purpose.
+    Verifies the standard modulus-10 routine: real ISINs (Apple, Microsoft,
+    Deutsche Bank) validate, a payload with the wrong check digit is rejected,
+    and malformed input fails the format gate before the check digit runs.
     """
     assert SecurityDataValidator.validate_isin(isin) is expected
 
