@@ -12,7 +12,18 @@
         { "name": "US Growth / Value / Size", "key": "AC.EQUITY.US.STYLE_SIZE", "color": "#e2b1f8" },
         { "name": "International Developed", "key": "AC.EQUITY.INTL.DEV", "color": "#acf2c7" },
         { "name": "Emerging Markets", "key": "AC.EQUITY.INTL.EM", "color": "#95ccb7" },
-        { "name": "Sector / Thematic", "key": "AC.EQUITY.SECTOR_THEMATIC", "color": "#c88dc9" }
+        { "name": "Sector / Thematic", "key": "AC.EQUITY.SECTOR_THEMATIC", "color": "#c88dc9" },
+        { "name": "Sector: Energy", "key": "AC.EQUITY.SECTOR.ENERGY", "color": "#8a892c" },
+        { "name": "Sector: Materials", "key": "AC.EQUITY.SECTOR.MATERIALS", "color": "#578a2c" },
+        { "name": "Sector: Industrials", "key": "AC.EQUITY.SECTOR.INDUSTRIALS", "color": "#2c8a34" },
+        { "name": "Sector: Consumer Discretionary", "key": "AC.EQUITY.SECTOR.CONS_DISC", "color": "#2c8a67" },
+        { "name": "Sector: Consumer Staples", "key": "AC.EQUITY.SECTOR.CONS_STAPLES", "color": "#2c798a" },
+        { "name": "Sector: Health Care", "key": "AC.EQUITY.SECTOR.HEALTH_CARE", "color": "#2c468a" },
+        { "name": "Sector: Financials", "key": "AC.EQUITY.SECTOR.FINANCIALS", "color": "#452c8a" },
+        { "name": "Sector: Information Technology", "key": "AC.EQUITY.SECTOR.INFO_TECH", "color": "#782c8a" },
+        { "name": "Sector: Communication Services", "key": "AC.EQUITY.SECTOR.COMM_SVCS", "color": "#8a2c68" },
+        { "name": "Sector: Utilities", "key": "AC.EQUITY.SECTOR.UTILITIES", "color": "#8a2c35" },
+        { "name": "Sector: Real Estate", "key": "AC.EQUITY.SECTOR.REAL_ESTATE", "color": "#8a562c" }
       ]
     },
     {
