@@ -3,7 +3,7 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -117,6 +117,23 @@ class SecurityMaster(Base):
     data_quality_score: Mapped[Decimal | None] = mapped_column(
         Numeric(3, 2),
     )  # 0.00-1.00
+
+    # Classification provenance + override lock (Phase D3, ADR-003 4.3 / ADR-015).
+    # classification_locked is the integration contract: automated tiers MUST skip
+    # locked rows so a later run cannot silently overwrite a human classification.
+    classification_tier: Mapped[int | None] = mapped_column()  # 1-4; 4 = manual
+    classification_source: Mapped[str | None] = mapped_column(String(50))
+    classification_confidence: Mapped[Decimal | None] = mapped_column(
+        Numeric(3, 2),
+    )  # 0.00-1.00
+    classification_locked: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
+    classified_by: Mapped[str | None] = mapped_column(String(100))
+    classified_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     def __repr__(self) -> str:
         """Return a debug-friendly string representation of this SecurityMaster record.
