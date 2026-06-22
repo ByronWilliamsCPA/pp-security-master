@@ -1,11 +1,13 @@
 """Command-line interface for the Security Master service.
 
-Exposes three commands under the ``pp-master`` group:
+Exposes these commands under the ``pp-master`` group:
 
 - ``import-xml`` / ``export-xml``: move a Portfolio Performance ``client.xml``
   backup in and out of the database.
 - ``import-broker``: ingest a broker export (currently IBKR Flex Query XML) into
   the transactions store.
+- ``classify``: a sub-group for Tier-4 manual classification (gics-sector,
+  sleeve, cash, crypto-seed) that locks a row against automated overwrite.
 
 Database connection details are read from the environment (see
 :func:`security_master.storage.database.get_database_url`).
@@ -13,8 +15,22 @@ Database connection details are read from the environment (see
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import click
 
+from security_master.classifier import (
+    AssignmentKind,
+    ClassificationLockedError,
+    ManualAssignment,
+    apply_manual_classification,
+)
+from security_master.classifier.crypto_seed import apply_crypto_seed
+from security_master.classifier.taxonomy_lookup import (
+    UnknownClassificationValueError,
+    resolve_brx_plus_sleeve,
+    resolve_gics_sector,
+)
 from security_master.extractor import IBKRFlexImportService
 from security_master.patch.pp_xml_export import PPXMLExportService
 from security_master.patch.pp_xml_import import PPXMLImportService
@@ -23,6 +39,12 @@ from security_master.storage.database import (
     create_tables,
     get_session_factory,
 )
+from security_master.storage.models import SecurityMaster
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from sqlalchemy.orm import Session
 
 # Institutions whose broker files import-broker can ingest today.
 _SUPPORTED_INSTITUTIONS = ("ibkr",)
@@ -150,6 +172,194 @@ def import_broker(
         f"(skipped {summary.skipped} existing) "
         f"from {file} as batch {summary.import_batch_id}."
     )
+
+
+def _find_security(
+    session: Session, isin: str | None, security_id: int | None
+) -> SecurityMaster:
+    """Look up one security by ISIN or primary key.
+
+    Args:
+        session: Active database session.
+        isin: ISIN to match (primary selector).
+        security_id: Primary key to match (alternative selector).
+
+    Returns:
+        The matching SecurityMaster.
+
+    Raises:
+        click.ClickException: If neither selector is given or no row matches.
+    """
+    if isin:
+        sec = session.query(SecurityMaster).filter_by(isin=isin).one_or_none()
+    elif security_id is not None:
+        sec = session.get(SecurityMaster, security_id)
+    else:
+        msg = "provide --isin or --id to select a security"
+        raise click.ClickException(msg)
+    if sec is None:
+        msg = f"no security found for isin={isin!r} id={security_id!r}"
+        raise click.ClickException(msg)
+    return sec
+
+
+def _run_assignment(
+    isin: str | None,
+    security_id: int | None,
+    assignment: ManualAssignment,
+    classified_by: str,
+    *,
+    force: bool,
+) -> None:
+    """Apply a manual assignment inside a managed session, printing the outcome.
+
+    Args:
+        isin: ISIN selector.
+        security_id: Primary-key selector.
+        assignment: The validated assignment to write.
+        classified_by: Operator recorded in provenance.
+        force: Override a locked row when ``True``.
+
+    Raises:
+        click.ClickException: If the row is locked and ``force`` is not set.
+    """
+    engine = create_db_engine()
+    session = get_session_factory(engine)()
+    try:
+        sec = _find_security(session, isin, security_id)
+        try:
+            apply_manual_classification(
+                session, sec, assignment, classified_by=classified_by, force=force
+            )
+        except ClassificationLockedError as exc:
+            session.rollback()
+            raise click.ClickException(str(exc)) from exc
+        session.commit()
+        click.echo(
+            f"Classified {sec.isin or sec.id}: "
+            f"{assignment.kind.value}={assignment.value} (locked)."
+        )
+    finally:
+        session.close()
+        engine.dispose()
+
+
+@click.group("classify")
+def classify() -> None:
+    """Manually classify a security (Tier-4) and lock it against overwrite."""
+
+
+def _selector_options(
+    func: Callable[..., None],
+) -> Callable[..., None]:
+    """Attach the shared selector + provenance options to a subcommand.
+
+    Args:
+        func: The click command function to decorate.
+
+    Returns:
+        The decorated function with --isin/--id/--classified-by/--force options.
+    """
+    func = click.option("--isin", default=None, help="Select the security by ISIN.")(
+        func
+    )
+    func = click.option(
+        "--id", "security_id", type=int, default=None, help="Select by primary key."
+    )(func)
+    func = click.option(
+        "--classified-by", required=True, help="Operator recorded in provenance."
+    )(func)
+    return click.option(
+        "--force", is_flag=True, default=False, help="Override a locked row."
+    )(func)
+
+
+@classify.command("gics-sector")
+@click.argument("sector")
+@_selector_options
+def classify_gics_sector(
+    sector: str,
+    isin: str | None,
+    security_id: int | None,
+    classified_by: str,
+    *,
+    force: bool,
+) -> None:
+    """Assign a GICS-L1 SECTOR (validated against the committed taxonomy)."""
+    try:
+        canonical = resolve_gics_sector(sector)
+    except UnknownClassificationValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+    _run_assignment(
+        isin,
+        security_id,
+        ManualAssignment(AssignmentKind.GICS_SECTOR, canonical),
+        classified_by,
+        force=force,
+    )
+
+
+@classify.command("sleeve")
+@click.argument("brx_key")
+@_selector_options
+def classify_sleeve(
+    brx_key: str,
+    isin: str | None,
+    security_id: int | None,
+    classified_by: str,
+    *,
+    force: bool,
+) -> None:
+    """Assign a BRX-Plus sleeve by leaf KEY (e.g. AC.ALTS.CRYPTO.BTC)."""
+    try:
+        resolve_brx_plus_sleeve(brx_key)
+    except UnknownClassificationValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+    _run_assignment(
+        isin,
+        security_id,
+        ManualAssignment(AssignmentKind.SLEEVE, brx_key),
+        classified_by,
+        force=force,
+    )
+
+
+@classify.command("cash")
+@_selector_options
+def classify_cash(
+    isin: str | None,
+    security_id: int | None,
+    classified_by: str,
+    *,
+    force: bool,
+) -> None:
+    """Assign the security to the Cash & Cash Equivalents sleeve."""
+    _run_assignment(
+        isin,
+        security_id,
+        ManualAssignment(AssignmentKind.CASH, "Cash & Cash Equivalents"),
+        classified_by,
+        force=force,
+    )
+
+
+@classify.command("crypto-seed")
+@click.option("--classified-by", required=True, help="Operator recorded in provenance.")
+@click.option("--force", is_flag=True, default=False, help="Override locked rows.")
+def classify_crypto_seed(classified_by: str, *, force: bool) -> None:
+    """Bulk-apply the committed crypto seed to securities matched by symbol."""
+    engine = create_db_engine()
+    session = get_session_factory(engine)()
+    try:
+        count = apply_crypto_seed(session, classified_by=classified_by, force=force)
+        session.commit()
+        click.echo(f"Applied crypto seed to {count} securities.")
+    finally:
+        session.close()
+        engine.dispose()
+
+
+app.add_command(classify)
 
 
 if __name__ == "__main__":
