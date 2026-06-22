@@ -110,12 +110,30 @@ def _resolve_override(
     return None
 
 
+def _is_authoritative(doc: dict[str, object]) -> bool:
+    """Return whether a crosswalk document is books-owner-authoritative.
+
+    A document is authoritative only when it sets ``complete: true``. The
+    ``ibor_to_xero_gl.yaml`` crosswalk deliberately withholds that flag while
+    its GL codes are PROVISIONAL pending master-COA sign-off, so this returns
+    ``False`` for it until the books owner sets the flag.
+
+    Args:
+        doc: A parsed crosswalk document.
+
+    Returns:
+        ``True`` only when ``complete`` is exactly ``True``.
+    """
+    return doc.get("complete") is True
+
+
 def resolve_gl_account(
     *,
     brx_plus_key: str | None = None,
     type_of_security: str | None = None,
     wrapper: str | None = None,
     holding_intent: str | None = None,
+    allow_provisional: bool = False,
     base: str | None = None,
 ) -> str | None:
     """Resolve the Xero GL account code for an IBOR holding.
@@ -123,8 +141,17 @@ def resolve_gl_account(
     Resolution order matches ADR-016: a BRX-Plus key is most specific and wins;
     otherwise fall back to the Type of Security. When ``wrapper`` or
     ``holding_intent`` is supplied and the resolved key has an ``overrides``
-    entry whose conditions match, the override replaces the default. Returns
-    ``None`` when nothing resolves.
+    entry whose conditions match, the override replaces the default.
+
+    #CRITICAL (financial) the ``ibor_to_xero_gl.yaml`` crosswalk is
+    NON-AUTHORITATIVE until the books owner verifies every code against the
+    master chart of accounts and sets ``complete: true``. Returning a postable
+    8-digit code from a draft crosswalk silently mis-states the ABOR. This
+    resolver therefore refuses to hand a code back from a non-authoritative
+    crosswalk unless the caller passes ``allow_provisional=True`` to opt into
+    draft data explicitly. The opt-in is greppable, so any posting path that
+    consumes draft codes is visible in review. #VERIFY before clearing the gate
+    that ``complete: true`` is set ONLY after master-COA sign-off.
 
     Args:
         brx_plus_key: The holding's BRX-Plus classification key, if known.
@@ -134,10 +161,15 @@ def resolve_gl_account(
         holding_intent: ``"current"`` or ``"non_current"``; selects an
             intent-specific override when present. Not derivable from PP data,
             so it is a per-holding input.
+        allow_provisional: When ``False`` (the default), a code resolved from a
+            non-authoritative crosswalk (one without ``complete: true``) is
+            withheld and ``None`` is returned. Pass ``True`` to receive
+            provisional codes, acknowledging they are not COA-confirmed.
         base: Optional override for the crosswalks directory.
 
     Returns:
-        The Xero GL account code, or ``None`` if unresolved.
+        The Xero GL account code, or ``None`` when nothing resolves OR when the
+        crosswalk is non-authoritative and ``allow_provisional`` is ``False``.
     """
     doc = _load("ibor_to_xero_gl.yaml", base)
     resolved_key: str | None = None
@@ -152,11 +184,15 @@ def resolve_gl_account(
             resolved_key, default_gl = type_of_security, by_type[type_of_security]
     if resolved_key is None or default_gl is None:
         return None
+    code = default_gl
     if wrapper is not None or holding_intent is not None:
         override = _resolve_override(doc, resolved_key, wrapper, holding_intent)
         if override is not None:
-            return override
-    return default_gl
+            code = override
+    # Financial gate: withhold codes from a draft crosswalk unless opted in.
+    if not _is_authoritative(doc) and not allow_provisional:
+        return None
+    return code
 
 
 def _longest_prefix_match(code: str, mapping: dict[str, str]) -> str | None:
@@ -271,5 +307,5 @@ def resolve_brx_plus_from_gics(
         return None
     doc = _load("gics_to_brx_plus.yaml", base)
     by_sector = _section(doc, "by_gics_sector")
-    default = cast("str", doc.get("default_for_single_sector"))
+    default = cast("str | None", doc.get("default_for_single_sector"))
     return by_sector.get(gics_sector, default)

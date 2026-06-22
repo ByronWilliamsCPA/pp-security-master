@@ -138,8 +138,10 @@ The Phase E3-E4 seeds were finished with owner sign-off on three points:
    `wrapper` (`direct`/`fund`/`etf`/`public`) and `holding_intent`
    (`current`/`non_current`) keyword arguments. A new `overrides:` block in
    `ibor_to_xero_gl.yaml`, keyed by classification, returns a wrapper/intent-
-   specific GL code when one matches; otherwise the single default stands, so
-   existing no-wrapper callers are unchanged. Seeded with the direct-property
+   specific GL code when one matches; otherwise the single default stands. The
+   override mechanism is additive (a key with no override returns its default);
+   whether that code is returned at all is governed by the provisional gate
+   recorded in the remediation note below. Seeded with the direct-property
    (`15111200`) vs public-REIT (`14201400`) distinction for `AC.ALTS.RE`.
    `#EDGE` `holding_intent` is plumbed through but carries no data yet (the GL
    taxonomy has no current-asset investment leaf beyond the new cash leaves).
@@ -152,13 +154,28 @@ The Phase E3-E4 seeds were finished with owner sign-off on three points:
    and region holdings are mandate-assigned and never auto-derived from GICS
    (the caller must assert `is_single_sector`).
 3. **Provisional cash GL leaves.** `11141000`/`11141100`/`11141200` were added
-   under the `1114` cash-equivalents parent so the cash sleeves resolve. These
-   are PROVISIONAL placeholders, `#VERIFY`-pending the master COA; the
-   `ibor_to_xero_gl.yaml` crosswalk is not authoritative until the books owner
-   signs off.
+   under a new keyless `Cash & Cash Equivalents` parent node (the leaves share
+   the `1114xxxx` numeric prefix; the parent node itself carries no `key`) so the
+   cash sleeves resolve. These are PROVISIONAL placeholders, `#VERIFY`-pending the
+   master COA; the `ibor_to_xero_gl.yaml` crosswalk is not authoritative until the
+   books owner signs off.
 
 A new resolver, `resolve_gics_from_sic_naics`, was also added (longest-prefix
 match over the expanded SIC/NAICS concordance) to consume `sic_naics_to_gics.yaml`.
+
+### Review remediation (2026-06-22): provisional gate is now enforced in code
+
+The original E5 seed signalled the draft posture only by withholding the
+`complete:` flag, which no code read, so `resolve_gl_account` returned the
+provisional codes indistinguishably from confirmed ones. `resolve_gl_account`
+now reads `complete:` (via `_is_authoritative`) and gates output: a code from a
+non-authoritative crosswalk (one without `complete: true`) is withheld and `None`
+is returned unless the caller passes `allow_provisional=True`. This restores a
+fail-safe default (a naive caller cannot post a draft code) and makes any draft
+consumption greppable at the call site. `#CRITICAL` (financial) set
+`complete: true` on `ibor_to_xero_gl.yaml` ONLY after master-COA sign-off; doing
+so before then opens the gate to unconfirmed codes. `#VERIFY` the books owner has
+confirmed every code against the master COA before flipping the flag.
 
 ## Related Decisions
 
