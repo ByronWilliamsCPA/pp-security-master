@@ -18,17 +18,22 @@ if TYPE_CHECKING:
     # stdlib has complete type stubs; defusedxml.ElementTree re-exports the
     # same API at runtime via the safe parser imported in the else branch.
     import xml.etree.ElementTree as ET  # nosec B405  # nosemgrep: python.lang.security.use-defused-xml.use-defused-xml
+    from datetime import date
 
     from sqlalchemy.orm import Session
 else:
     import defusedxml.ElementTree as ET  # noqa: N817  # safe parser at runtime
 
 from dataclasses import dataclass
-from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
 
+from security_master.extractor._flex_common import (
+    none_if_empty,
+    parse_decimal,
+    parse_flex_date,
+)
 from security_master.storage.transaction_models import InteractiveBrokersTransaction
 
 # Account name is a constant: the Flex Trade record has no attribute that
@@ -38,56 +43,11 @@ IBKR_ACCOUNT_NAME = "Interactive Brokers"
 # security_name maps to the SQLAlchemy String(255) description column.
 _SECURITY_NAME_MAX_LEN = 255
 
-
-def _none_if_empty(value: str | None) -> str | None:
-    """Return None for empty or whitespace-only strings, else the value.
-
-    IBKR Flex serializes absent attributes as empty strings (``""``) rather
-    than omitting them. Passing ``""`` into a Date or Numeric column raises,
-    so every nullable field is funneled through this helper first.
-
-    Args:
-        value: Raw attribute value read from the XML, or None when the
-            attribute is absent entirely.
-
-    Returns:
-        None when the value is None, empty, or only whitespace; otherwise the
-        original string unchanged.
-    """
-    if value is None:
-        return None
-    stripped = value.strip()
-    return stripped or None
-
-
-def _parse_date(value: str | None) -> date | None:
-    """Parse an IBKR ``MM/DD/YYYY`` date string into a date, or None.
-
-    Args:
-        value: Date string in ``MM/DD/YYYY`` form, or an empty/None value.
-
-    Returns:
-        A :class:`datetime.date`, or None when the input is empty or absent.
-    """
-    cleaned = _none_if_empty(value)
-    if cleaned is None:
-        return None
-    return datetime.strptime(cleaned, "%m/%d/%Y").date()  # noqa: DTZ007
-
-
-def _parse_decimal(value: str | None) -> Decimal | None:
-    """Parse a numeric string into a Decimal, or None when empty.
-
-    Args:
-        value: Numeric string read from the XML, or an empty/None value.
-
-    Returns:
-        A :class:`decimal.Decimal`, or None when the input is empty or absent.
-    """
-    cleaned = _none_if_empty(value)
-    if cleaned is None:
-        return None
-    return Decimal(cleaned)
+# Back-compat aliases: existing call sites and tests used these underscore
+# names; keep them to avoid churn across the codebase.
+_none_if_empty = none_if_empty
+_parse_decimal = parse_decimal
+_parse_date = parse_flex_date
 
 
 @dataclass(frozen=True)
