@@ -33,11 +33,19 @@ pytestmark = [pytest.mark.unit, pytest.mark.classifier]
 _TEST_ISIN = "US0378331005"
 
 
-def _seed_engine(tmp_path: Path) -> tuple[Engine, str]:
+def _seed_engine(
+    tmp_path: Path,
+    *,
+    isin: str | None = _TEST_ISIN,
+    symbol: str = "AAPL",
+) -> tuple[Engine, str]:
     """Create a file-based SQLite database with one unclassified security.
 
     Args:
         tmp_path: Pytest temporary directory for the database file.
+        isin: ISIN to assign to the seeded security; ``None`` for a symbol-only
+            row (used by the crypto-seed path, which matches on symbol).
+        symbol: Symbol to assign to the seeded security.
 
     Returns:
         A tuple of (engine, sqlite-url) for the seeded database.
@@ -56,17 +64,19 @@ def _seed_engine(tmp_path: Path) -> tuple[Engine, str]:
     from sqlalchemy.orm import sessionmaker
 
     session = sessionmaker(bind=engine)()
-    session.add(SecurityMaster(name="Apple Inc.", isin=_TEST_ISIN, symbol="AAPL"))
+    session.add(SecurityMaster(name="Seed Security", isin=isin, symbol=symbol))
     session.commit()
     session.close()
     return engine, url
 
 
-def _reopen(url: str) -> SecurityMaster:
+def _reopen(url: str, *, symbol: str | None = None) -> SecurityMaster:
     """Reopen the database and return the single seeded security.
 
     Args:
         url: SQLite URL of the file-based test database.
+        symbol: When given, match on symbol instead of the default ISIN; needed
+            for the crypto-seed row, which is seeded without an ISIN.
 
     Returns:
         The persisted SecurityMaster row.
@@ -76,7 +86,10 @@ def _reopen(url: str) -> SecurityMaster:
     engine = create_engine(url)
     session = sessionmaker(bind=engine)()
     try:
-        return session.query(SecurityMaster).filter_by(isin=_TEST_ISIN).one()
+        query = session.query(SecurityMaster)
+        if symbol is not None:
+            return query.filter_by(symbol=symbol).one()
+        return query.filter_by(isin=_TEST_ISIN).one()
     finally:
         session.close()
         engine.dispose()
@@ -192,3 +205,74 @@ def test_classify_locked_row_requires_force(
     )
     assert forced.exit_code == 0, forced.output
     assert _reopen(url).industries_gics_sectors_level1 == "Financials"
+
+
+def test_classify_sleeve_assigns_brx_plus_levels(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A BRX-Plus leaf key writes both level columns and the full key."""
+    _, url = _seed_engine(tmp_path)
+    monkeypatch.setattr(cli, "create_db_engine", lambda *_a, **_k: create_engine(url))
+
+    result = CliRunner().invoke(
+        cli.app,
+        [
+            "classify",
+            "sleeve",
+            "AC.ALTS.CRYPTO.ETH",
+            "--isin",
+            _TEST_ISIN,
+            "--classified-by",
+            "byron",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    sec = _reopen(url)
+    assert sec.brx_plus == "AC.ALTS.CRYPTO.ETH"
+    assert sec.brx_plus_level1 == "Alternatives"
+    assert sec.brx_plus_level2 == "Crypto (ETH)"
+
+
+def test_classify_cash_assigns_cash_sleeve_and_locks(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The cash subcommand writes the cash level1 sleeve and locks the row."""
+    _, url = _seed_engine(tmp_path)
+    monkeypatch.setattr(cli, "create_db_engine", lambda *_a, **_k: create_engine(url))
+
+    result = CliRunner().invoke(
+        cli.app,
+        ["classify", "cash", "--isin", _TEST_ISIN, "--classified-by", "byron"],
+    )
+
+    assert result.exit_code == 0, result.output
+    sec = _reopen(url)
+    assert sec.brx_plus_level1 == "Cash & Cash Equivalents"
+    assert sec.classification_locked is True
+
+
+def test_classify_crypto_seed_bulk_applies_to_matched_symbols(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """crypto-seed assigns the committed sleeve to a symbol-matched row.
+
+    Exercises the distinct crypto-seed session path (its own engine, commit, and
+    dispose) end to end via the CLI, not just the underlying apply_crypto_seed.
+    """
+    _, url = _seed_engine(tmp_path, isin=None, symbol="BTC")
+    monkeypatch.setattr(cli, "create_db_engine", lambda *_a, **_k: create_engine(url))
+
+    result = CliRunner().invoke(
+        cli.app,
+        ["classify", "crypto-seed", "--classified-by", "byron"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Applied crypto seed to 1 securities." in result.output
+    sec = _reopen(url, symbol="BTC")
+    assert sec.brx_plus == "AC.ALTS.CRYPTO.BTC"
+    assert sec.classification_locked is True
