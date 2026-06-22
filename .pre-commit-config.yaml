@@ -112,6 +112,15 @@ repos:
         files: '^(taxonomies/.*\.taxonomy\.json|scripts/validate_taxonomy_json\.py)$'
         pass_filenames: false
 
+      # Licensing guard: block committing identifier-to-GICS assignment data
+      # (ADR-015 #CRITICAL). GICS sector assignments must stay user-local.
+      - id: licensing-guard
+        name: No committed identifier-to-GICS assignments
+        language: system
+        entry: uv run python scripts/check_no_licensed_assignments.py
+        files: '^(taxonomies/|seeds/|crosswalks/).*\.(ya?ml|json)$|^scripts/check_no_licensed_assignments\.py$'
+        pass_filenames: false
+
       # Em-dash guard: block the U+2014 character in all text files
       - id: no-em-dash
         name: No em-dashes
