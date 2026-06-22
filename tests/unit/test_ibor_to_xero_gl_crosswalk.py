@@ -64,13 +64,16 @@ def _mapped_codes() -> set[str]:
     """Collect every GL code referenced by the crosswalk mapping sections.
 
     Returns:
-        The set of GL codes appearing as mapping values.
+        The set of GL codes appearing as mapping or override values.
     """
     cw = _crosswalk()
     codes: set[str] = set()
     for section in ("by_type_of_security", "by_brx_plus"):
         mapping = cast("dict[str, str]", cw.get(section, {}))
         codes.update(mapping.values())
+    overrides = cast("dict[str, list[dict[str, str]]]", cw.get("overrides", {}))
+    for entries in overrides.values():
+        codes.update(e["gl"] for e in entries if "gl" in e)
     return codes
 
 
@@ -108,3 +111,37 @@ def test_crosswalk_mapping_sections_present() -> None:
             f"crosswalk section '{section}' is empty; "
             "the drift guard would validate nothing"
         )
+
+
+def test_override_gl_codes_are_eight_digit_numeric() -> None:
+    """Override GL codes follow the 8-digit shape, like the taxonomy leaves."""
+    cw = _crosswalk()
+    overrides = cast("dict[str, list[dict[str, str]]]", cw.get("overrides", {}))
+    bad = {
+        e["gl"]
+        for entries in overrides.values()
+        for e in entries
+        if "gl" in e and not (e["gl"].isdigit() and len(e["gl"]) == 8)
+    }
+    assert not bad, f"override GL codes not 8-digit numeric: {bad}"
+
+
+def test_override_entries_declare_a_condition() -> None:
+    """Each override entry must declare at least one NON-NULL selector so it
+    cannot match unconditionally and shadow the default.
+
+    Checking key presence alone is insufficient: `_resolve_override` matches on
+    `entry.get("wrapper")`/`entry.get("holding_intent")`, so an explicit
+    `{wrapper: null, gl: ...}` has the key present yet both selectors resolve to
+    None and the entry matches unconditionally. Mirror the runtime semantics by
+    treating an entry as unconditional when both selector VALUES are None.
+    """
+    cw = _crosswalk()
+    overrides = cast("dict[str, list[dict[str, str]]]", cw.get("overrides", {}))
+    unconditional = {
+        key
+        for key, entries in overrides.items()
+        for e in entries
+        if e.get("wrapper") is None and e.get("holding_intent") is None
+    }
+    assert not unconditional, f"override entries with no condition: {unconditional}"

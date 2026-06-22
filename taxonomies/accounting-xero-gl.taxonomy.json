@@ -33,6 +33,14 @@
       ]
     },
     {
+      "name": "Cash & Cash Equivalents",
+      "children": [
+        { "name": "Money Market / Bank Deposits", "key": "11141000" },
+        { "name": "T-Bills (1-6m)", "key": "11141100" },
+        { "name": "Short-Term Cash Proxies", "key": "11141200" }
+      ]
+    },
+    {
       "name": "Investment Property",
       "children": [
         { "name": "Investment Property - Buildings", "key": "15111200" }

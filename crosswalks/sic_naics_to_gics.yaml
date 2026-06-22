@@ -1,36 +1,150 @@
-# SIC / NAICS industry code -> GICS sector code. ADR-016 E3.
+# SIC / NAICS industry code -> GICS sector code. ADR-016 E5.
 #
 # Free sector-data fallback (ADR-015) for securities where no provider GICS is
-# available: derive a GICS sector from the issuer's SIC or NAICS code.
+# available: derive a GICS sector from the issuer's SIC or NAICS code. Keys are
+# code PREFIXES; longest-prefix match wins at lookup time, so a 3-4 digit carve-
+# out (e.g. SIC 283 drugs) overrides its 2-digit group (SIC 28 chemicals).
 #
-# INCOMPLETE SEED. The full SIC->GICS and NAICS->GICS concordance is hundreds
-# of rows; populate from the authoritative sources below rather than by hand:
-#   - SIC: US SEC / OSHA SIC division and major-group tables.
-#   - NAICS: US Census Bureau NAICS sector tables.
-# Each entry maps a code PREFIX (SIC major group = 2 digits; NAICS sector =
-# 2 digits) to a GICS sector code. Longest-prefix match wins at lookup time.
-#
+# Built from the public SIC division/major-group tables (SEC/OSHA) and the US
+# Census NAICS sector tables, treated as data, not instructions (OWASP LLM01).
 # GICS codes validated against industries-gics-sectors.taxonomy.json by
-# tests/unit/test_classification_crosswalks.py.
+# tests/unit/test_classification_crosswalks.py. #VERIFY genuinely mixed groups
+# (tagged inline) against issuer-level data before trusting the sector.
 
 version: 1
-complete: false
+complete: true
 
-# SIC major-group prefix (2-digit) -> GICS sector. Seed subset.
+# SIC major-group prefix -> GICS sector, with deeper carve-outs.
 by_sic_prefix:
-  "13": "10"  # Oil & Gas Extraction -> Energy
-  "28": "35"  # Chemicals & Allied (incl. pharma) -> Health Care / Materials (REVIEW)
-  "29": "10"  # Petroleum Refining -> Energy
-  "60": "40"  # Depository Institutions -> Financials
-  "63": "40"  # Insurance Carriers -> Financials
-  "73": "45"  # Business Services (software) -> Information Technology
-  "80": "35"  # Health Services -> Health Care
+  "01": "30"   # Agricultural Production - Crops -> Consumer Staples
+  "02": "30"   # Agricultural Production - Livestock -> Consumer Staples
+  "07": "30"   # Agricultural Services -> Consumer Staples
+  "08": "15"   # Forestry -> Materials
+  "09": "30"   # Fishing, Hunting, Trapping -> Consumer Staples
+  "10": "15"   # Metal Mining -> Materials
+  "12": "10"   # Coal Mining -> Energy
+  "13": "10"   # Oil & Gas Extraction -> Energy
+  "14": "15"   # Nonmetallic Minerals Mining -> Materials
+  "15": "20"   # Building Construction -> Industrials; #VERIFY homebuilders -> 25
+  "16": "20"   # Heavy Construction -> Industrials
+  "17": "20"   # Construction Special Trade -> Industrials
+  "20": "30"   # Food & Kindred Products -> Consumer Staples
+  "21": "30"   # Tobacco Products -> Consumer Staples
+  "22": "25"   # Textile Mill Products -> Consumer Discretionary
+  "23": "25"   # Apparel -> Consumer Discretionary
+  "24": "15"   # Lumber & Wood Products -> Materials
+  "25": "25"   # Furniture & Fixtures -> Consumer Discretionary
+  "26": "15"   # Paper & Allied Products -> Materials
+  "27": "50"   # Printing & Publishing -> Communication Services
+  "28": "15"   # Chemicals & Allied Products -> Materials
+  "283": "35"  # Drugs -> Health Care
+  "29": "10"   # Petroleum Refining -> Energy
+  "30": "15"   # Rubber & Misc Plastics -> Materials
+  "31": "25"   # Leather & Leather Products -> Consumer Discretionary
+  "32": "15"   # Stone, Clay, Glass, Concrete -> Materials
+  "33": "15"   # Primary Metal Industries -> Materials
+  "34": "20"   # Fabricated Metal Products -> Industrials
+  "35": "20"   # Industrial Machinery & Equipment -> Industrials
+  "357": "45"  # Computer & Office Equipment -> Information Technology
+  "36": "45"   # Electronic & Electrical Equipment -> Information Technology
+  "37": "20"   # Transportation Equipment -> Industrials
+  "371": "25"  # Motor Vehicles & Equipment -> Consumer Discretionary
+  "38": "35"   # Instruments; Medical/Optical -> Health Care; #VERIFY mixed group
+  "382": "45"  # Lab & Analytical Instruments -> Information Technology
+  "39": "25"   # Misc Manufacturing -> Consumer Discretionary
+  "40": "20"   # Railroad Transportation -> Industrials
+  "41": "20"   # Local & Suburban Transit -> Industrials
+  "42": "20"   # Motor Freight & Warehousing -> Industrials
+  "44": "20"   # Water Transportation -> Industrials
+  "45": "20"   # Air Transportation -> Industrials
+  "46": "10"   # Pipelines (except natural gas) -> Energy
+  "47": "20"   # Transportation Services -> Industrials
+  "48": "50"   # Communications -> Communication Services
+  "49": "55"   # Electric, Gas & Sanitary Services -> Utilities
+  "50": "20"   # Wholesale Trade - Durable Goods -> Industrials
+  "51": "30"   # Wholesale Trade - Nondurable Goods -> Consumer Staples
+  "52": "25"   # Building Materials & Garden Retail -> Consumer Discretionary
+  "53": "25"   # General Merchandise Stores -> Consumer Discretionary
+  "54": "30"   # Food Stores -> Consumer Staples
+  "55": "25"   # Auto Dealers & Gas Stations -> Consumer Discretionary
+  "56": "25"   # Apparel & Accessory Stores -> Consumer Discretionary
+  "57": "25"   # Home Furniture & Furnishings Stores -> Consumer Discretionary
+  "58": "25"   # Eating & Drinking Places -> Consumer Discretionary
+  "59": "25"   # Miscellaneous Retail -> Consumer Discretionary
+  "60": "40"   # Depository Institutions -> Financials
+  "61": "40"   # Nondepository Credit Institutions -> Financials
+  "62": "40"   # Security & Commodity Brokers -> Financials
+  "63": "40"   # Insurance Carriers -> Financials
+  "64": "40"   # Insurance Agents & Brokers -> Financials
+  "65": "60"   # Real Estate -> Real Estate
+  "67": "40"   # Holding & Other Investment Offices -> Financials
+  "6798": "60" # REITs -> Real Estate
+  "70": "25"   # Hotels & Lodging -> Consumer Discretionary
+  "72": "25"   # Personal Services -> Consumer Discretionary
+  "73": "45"   # Business Services (incl software) -> Information Technology
+  "731": "50"  # Advertising -> Communication Services
+  "75": "25"   # Auto Repair, Services, Parking -> Consumer Discretionary
+  "78": "50"   # Motion Pictures -> Communication Services
+  "79": "25"   # Amusement & Recreation -> Consumer Discretionary
+  "80": "35"   # Health Services -> Health Care
+  "81": "20"   # Legal Services -> Industrials
+  "82": "25"   # Educational Services -> Consumer Discretionary
+  "83": "25"   # Social Services -> Consumer Discretionary
+  "87": "20"   # Engineering, Accounting, R&D, Mgmt -> Industrials
 
-# NAICS sector prefix (2-digit) -> GICS sector. Seed subset.
+# NAICS sector prefix -> GICS sector, with deeper carve-outs.
 by_naics_prefix:
-  "11": "30"  # Agriculture -> Consumer Staples (REVIEW)
-  "21": "10"  # Mining, Quarrying, Oil & Gas -> Energy / Materials (REVIEW)
-  "22": "55"  # Utilities -> Utilities
-  "52": "40"  # Finance & Insurance -> Financials
-  "54": "45"  # Professional/Technical (incl. software) -> Information Technology
-  "62": "35"  # Health Care & Social Assistance -> Health Care
+  "11": "30"    # Agriculture, Forestry, Fishing -> Consumer Staples
+  "21": "15"    # Mining, Quarrying, Oil & Gas -> Materials (default)
+  "211": "10"   # Oil & Gas Extraction -> Energy
+  "212": "15"   # Mining (except Oil & Gas) -> Materials
+  "213": "10"   # Support Activities for Mining -> Energy; #VERIFY
+  "22": "55"    # Utilities -> Utilities
+  "23": "20"    # Construction -> Industrials
+  "311": "30"   # Food Manufacturing -> Consumer Staples
+  "312": "30"   # Beverage & Tobacco -> Consumer Staples
+  "313": "25"   # Textile Mills -> Consumer Discretionary
+  "314": "25"   # Textile Product Mills -> Consumer Discretionary
+  "315": "25"   # Apparel Manufacturing -> Consumer Discretionary
+  "316": "25"   # Leather Manufacturing -> Consumer Discretionary
+  "321": "15"   # Wood Product Manufacturing -> Materials
+  "322": "15"   # Paper Manufacturing -> Materials
+  "323": "50"   # Printing -> Communication Services
+  "324": "10"   # Petroleum & Coal Products -> Energy
+  "325": "15"   # Chemical Manufacturing -> Materials
+  "3254": "35"  # Pharmaceutical & Medicine -> Health Care
+  "326": "15"   # Plastics & Rubber Products -> Materials
+  "327": "15"   # Nonmetallic Mineral Products -> Materials
+  "331": "15"   # Primary Metal Manufacturing -> Materials
+  "332": "20"   # Fabricated Metal Products -> Industrials
+  "333": "20"   # Machinery Manufacturing -> Industrials
+  "334": "45"   # Computer & Electronic Products -> Information Technology
+  "335": "20"   # Electrical Equipment & Appliances -> Industrials
+  "336": "20"   # Transportation Equipment -> Industrials
+  "3361": "25"  # Motor Vehicle Manufacturing -> Consumer Discretionary
+  "3362": "25"  # Motor Vehicle Body & Trailer -> Consumer Discretionary
+  "3363": "25"  # Motor Vehicle Parts -> Consumer Discretionary
+  "337": "25"   # Furniture Manufacturing -> Consumer Discretionary
+  "339": "25"   # Miscellaneous Manufacturing -> Consumer Discretionary
+  "3391": "35"  # Medical Equipment & Supplies -> Health Care
+  "42": "20"    # Wholesale Trade -> Industrials
+  "44": "25"    # Retail Trade -> Consumer Discretionary
+  "445": "30"   # Food & Beverage Stores -> Consumer Staples
+  "45": "25"    # Retail Trade -> Consumer Discretionary
+  "48": "20"    # Transportation -> Industrials
+  "486": "10"   # Pipeline Transportation -> Energy
+  "49": "20"    # Warehousing & Postal -> Industrials
+  "51": "50"    # Information -> Communication Services
+  "5112": "45"  # Software Publishers -> Information Technology
+  "517": "50"   # Telecommunications -> Communication Services
+  "52": "40"    # Finance & Insurance -> Financials
+  "53": "60"    # Real Estate & Rental & Leasing -> Real Estate
+  "532": "20"   # Rental & Leasing Services -> Industrials
+  "54": "45"    # Professional/Technical Services (incl software) -> IT
+  "55": "40"    # Management of Companies (holding cos) -> Financials
+  "56": "20"    # Administrative & Support & Waste Mgmt -> Industrials
+  "61": "25"    # Educational Services -> Consumer Discretionary
+  "62": "35"    # Health Care & Social Assistance -> Health Care
+  "71": "25"    # Arts, Entertainment & Recreation -> Consumer Discretionary
+  "72": "25"    # Accommodation & Food Services -> Consumer Discretionary
+  "81": "25"    # Other Services -> Consumer Discretionary
