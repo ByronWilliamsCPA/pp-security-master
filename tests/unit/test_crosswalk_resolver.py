@@ -33,9 +33,24 @@ def test_type_of_security_fallback() -> None:
 
 
 def test_unresolved_returns_none() -> None:
-    """Cash sleeves and empty input resolve to None rather than guessing."""
-    assert resolve_gl_account(brx_plus_key="AC.CASH.MONEY_MARKET") is None
+    """Empty input resolves to None; an unknown key resolves to None."""
     assert resolve_gl_account() is None
+    assert resolve_gl_account(brx_plus_key="AC.NOT.A.KEY") is None
+
+
+def test_cash_sleeves_resolve_to_provisional_leaves() -> None:
+    """Cash sleeves now map to the provisional cash-equivalent GL leaves."""
+    assert resolve_gl_account(brx_plus_key="AC.CASH.MONEY_MARKET") == "11141000"
+    assert resolve_gl_account(brx_plus_key="AC.CASH.TBILLS") == "11141100"
+    assert resolve_gl_account(brx_plus_key="AC.CASH.SHORT_TERM") == "11141200"
+
+
+def test_wrapper_override_direct_real_estate() -> None:
+    """A direct-property RE holding books to Investment Property, not REIT."""
+    assert resolve_gl_account(brx_plus_key="AC.ALTS.RE") == "14201400"
+    assert resolve_gl_account(brx_plus_key="AC.ALTS.RE", wrapper="direct") == "15111200"
+    # An unmatched wrapper falls back to the default.
+    assert resolve_gl_account(brx_plus_key="AC.ALTS.RE", wrapper="public") == "14201400"
 
 
 def test_resolve_cfi_category() -> None:

@@ -64,13 +64,16 @@ def _mapped_codes() -> set[str]:
     """Collect every GL code referenced by the crosswalk mapping sections.
 
     Returns:
-        The set of GL codes appearing as mapping values.
+        The set of GL codes appearing as mapping or override values.
     """
     cw = _crosswalk()
     codes: set[str] = set()
     for section in ("by_type_of_security", "by_brx_plus"):
         mapping = cast("dict[str, str]", cw.get(section, {}))
         codes.update(mapping.values())
+    overrides = cast("dict[str, list[dict[str, str]]]", cw.get("overrides", {}))
+    for entries in overrides.values():
+        codes.update(e["gl"] for e in entries if "gl" in e)
     return codes
 
 
