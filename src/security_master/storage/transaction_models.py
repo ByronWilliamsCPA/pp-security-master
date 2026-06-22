@@ -130,6 +130,27 @@ class InteractiveBrokersTransaction(TransactionBase):
     regulatory_fees: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     exchange_fees: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
 
+    # Record discriminator: TRADE, CASH, CORP_ACTION, TRANSFER. Kept separate
+    # from transaction_type (which holds the broker-native subtype like BUY,
+    # Dividends, TC, ACATS) so Layer 2 has a stable, indexable join key.
+    record_type: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="TRADE",
+        index=True,
+    )
+
+    # Non-trade record fields (nullable; faithful Layer-1 ingest).
+    action_id: Mapped[str | None] = mapped_column(String(50), index=True)
+    action_description: Mapped[str | None] = mapped_column(Text)
+    direction: Mapped[str | None] = mapped_column(String(8))  # transfer IN/OUT
+    dividend_type: Mapped[str | None] = mapped_column(String(50))
+    ex_date: Mapped[date | None] = mapped_column(Date)
+    proceeds: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
+    realized_pnl: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
+    figi: Mapped[str | None] = mapped_column(String(12), index=True)
+    conid: Mapped[str | None] = mapped_column(String(20))
+
     def __repr__(self) -> str:
         return f"<InteractiveBrokersTransaction(id={self.id}, trade_id='{self.trade_id}', date={self.transaction_date}, type='{self.transaction_type}', security='{self.security_name}')>"
 
