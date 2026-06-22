@@ -27,6 +27,7 @@ from security_master.classifier import (
 )
 from security_master.classifier.crypto_seed import apply_crypto_seed
 from security_master.classifier.taxonomy_lookup import (
+    CASH_LEVEL1,
     UnknownClassificationValueError,
     resolve_brx_plus_sleeve,
     resolve_gics_sector,
@@ -188,8 +189,12 @@ def _find_security(
         The matching SecurityMaster.
 
     Raises:
-        click.ClickException: If neither selector is given or no row matches.
+        click.ClickException: If both selectors are given, neither selector is
+            given, or no row matches.
     """
+    if isin and security_id is not None:
+        msg = "provide exactly one of --isin or --id, not both"
+        raise click.ClickException(msg)
     if isin:
         sec = session.query(SecurityMaster).filter_by(isin=isin).one_or_none()
     elif security_id is not None:
@@ -221,24 +226,32 @@ def _run_assignment(
         force: Override a locked row when ``True``.
 
     Raises:
-        click.ClickException: If the row is locked and ``force`` is not set.
+        click.ClickException: If the row is locked and ``force`` is not set, or
+            no security matches the selector.
+        Exception: Any other error from the write or commit, re-raised after the
+            transaction is rolled back.
     """
     engine = create_db_engine()
     session = get_session_factory(engine)()
     try:
         sec = _find_security(session, isin, security_id)
-        try:
-            apply_manual_classification(
-                session, sec, assignment, classified_by=classified_by, force=force
-            )
-        except ClassificationLockedError as exc:
-            session.rollback()
-            raise click.ClickException(str(exc)) from exc
+        apply_manual_classification(
+            session, sec, assignment, classified_by=classified_by, force=force
+        )
         session.commit()
         click.echo(
             f"Classified {sec.isin or sec.id}: "
             f"{assignment.kind.value}={assignment.value} (locked)."
         )
+    except ClassificationLockedError as exc:
+        session.rollback()
+        raise click.ClickException(str(exc)) from exc
+    except Exception:
+        # Roll back any partial write before re-raising (matches import_xml). A
+        # commit/flush failure or a taxonomy-resolution error must not leave the
+        # transaction to be discarded implicitly by close().
+        session.rollback()
+        raise
     finally:
         session.close()
         engine.dispose()
@@ -337,7 +350,7 @@ def classify_cash(
     _run_assignment(
         isin,
         security_id,
-        ManualAssignment(AssignmentKind.CASH, "Cash & Cash Equivalents"),
+        ManualAssignment(AssignmentKind.CASH, CASH_LEVEL1),
         classified_by,
         force=force,
     )
@@ -354,6 +367,14 @@ def classify_crypto_seed(classified_by: str, *, force: bool) -> None:
         count = apply_crypto_seed(session, classified_by=classified_by, force=force)
         session.commit()
         click.echo(f"Applied crypto seed to {count} securities.")
+    except ValueError as exc:
+        # A malformed seed or an unknown BRX-Plus value (both ValueError
+        # subclasses) should surface as a clean CLI error, not a raw traceback.
+        session.rollback()
+        raise click.ClickException(str(exc)) from exc
+    except Exception:
+        session.rollback()
+        raise
     finally:
         session.close()
         engine.dispose()

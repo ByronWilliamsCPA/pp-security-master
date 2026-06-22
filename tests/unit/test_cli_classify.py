@@ -122,6 +122,62 @@ def test_classify_gics_sector_assigns_and_locks(
     assert sec.classification_locked is True
 
 
+def test_classify_rejects_both_selectors(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Supplying both --isin and --id fails loudly instead of silently using ISIN."""
+    _, url = _seed_engine(tmp_path)
+    monkeypatch.setattr(cli, "create_db_engine", lambda *_a, **_k: create_engine(url))
+
+    result = CliRunner().invoke(
+        cli.app,
+        [
+            "classify",
+            "gics-sector",
+            "Information Technology",
+            "--isin",
+            _TEST_ISIN,
+            "--id",
+            "1",
+            "--classified-by",
+            "byron",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "exactly one of --isin or --id" in result.output
+    sec = _reopen(url)
+    assert sec.classification_locked is False
+
+
+def test_classify_sleeve_rejects_unknown_value(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An unknown BRX-Plus key is rejected before any write, like the GICS path."""
+    _, url = _seed_engine(tmp_path)
+    monkeypatch.setattr(cli, "create_db_engine", lambda *_a, **_k: create_engine(url))
+
+    result = CliRunner().invoke(
+        cli.app,
+        [
+            "classify",
+            "sleeve",
+            "AC.NOT.A.REAL.KEY",
+            "--isin",
+            _TEST_ISIN,
+            "--classified-by",
+            "byron",
+        ],
+    )
+
+    assert result.exit_code != 0
+    sec = _reopen(url)
+    assert sec.brx_plus is None
+    assert sec.classification_locked is False
+
+
 def test_classify_gics_sector_rejects_unknown_value(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

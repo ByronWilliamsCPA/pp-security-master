@@ -78,7 +78,10 @@ class ClassificationLockedError(RuntimeError):
         self.tier = tier
         self.by = by
         self.at = at
+        # Symbol-only rows (selected by --id) have no ISIN; fall back to a
+        # readable label so the message is not "security None is locked".
+        label = repr(isin) if isin else "the selected security"
         super().__init__(
-            f"security {isin!r} is locked (tier {tier}, by {by} at {at}); "
+            f"{label} is locked (tier {tier}, by {by} at {at}); "
             f"re-run with --force to override",
         )
