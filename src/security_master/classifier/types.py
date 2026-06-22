@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, IntEnum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
 class ClassificationTier(IntEnum):
@@ -60,7 +64,7 @@ class ClassificationLockedError(RuntimeError):
         isin: str | None,
         tier: int | None,
         by: str | None,
-        at: object,
+        at: datetime | None,
     ) -> None:
         """Build the error with the existing provenance for the CLI to render.
 
