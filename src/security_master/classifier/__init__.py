@@ -10,6 +10,7 @@ This package is built incrementally across the D3 tasks; exports grow as the
 manual path, chain stubs, and crypto seed land.
 """
 
+from security_master.classifier.manual import apply_manual_classification
 from security_master.classifier.taxonomy_lookup import (
     UnknownClassificationValueError,
     resolve_brx_plus_sleeve,
@@ -30,6 +31,7 @@ __all__ = [
     "ClassificationTier",
     "ManualAssignment",
     "UnknownClassificationValueError",
+    "apply_manual_classification",
     "resolve_brx_plus_sleeve",
     "resolve_gics_sector",
 ]
