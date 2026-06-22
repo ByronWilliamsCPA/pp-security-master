@@ -37,7 +37,12 @@ class CryptoSeed:
     Attributes:
         by_symbol: Mapping of crypto symbol to BRX-Plus leaf key. Treat as
             read-only; the loaded seed is cached and shared.
-        default: Fallback BRX-Plus leaf key for unlisted crypto symbols.
+        default: Fallback BRX-Plus leaf key, applied only to symbols passed
+            explicitly to :func:`apply_crypto_seed` that are absent from
+            ``by_symbol``. The CLI ``crypto-seed`` command passes no extra
+            symbols, so it classifies only the symbols ``by_symbol`` lists; the
+            default is not auto-applied to every crypto row (that would require
+            an asset-class selector this seed deliberately does not own).
     """
 
     by_symbol: dict[str, str]
@@ -59,6 +64,29 @@ def _read_seed(name: str) -> str:
     return (_REPO_SEED_DIR / name).read_text(encoding="utf-8")
 
 
+def _require_mapping(value: object, what: str) -> dict[object, object]:
+    """Return ``value`` as a mapping or raise a clear seed-validation error.
+
+    A malformed seed is a bad value in a data file, so it surfaces as ``ValueError``
+    (consistent with the missing-``default`` check and caught by the CLI), not the
+    ``AttributeError`` a bare ``.get`` would raise on a non-mapping.
+
+    Args:
+        value: The parsed node to validate.
+        what: Human label for the message (e.g. the file or the ``by_symbol`` key).
+
+    Returns:
+        ``value`` typed as a mapping.
+
+    Raises:
+        ValueError: If ``value`` is not a mapping.
+    """
+    if isinstance(value, dict):
+        return cast("dict[object, object]", value)
+    msg = f"crypto seed {_SEED_FILE} {what} must be a mapping"
+    raise ValueError(msg)
+
+
 def _parse_seed(text: str) -> CryptoSeed:
     """Parse and validate crypto seed YAML text.
 
@@ -69,15 +97,17 @@ def _parse_seed(text: str) -> CryptoSeed:
         The validated ``CryptoSeed``.
 
     Raises:
-        ValueError: If the seed has no non-empty ``default`` sleeve key.
+        ValueError: If the seed is not a YAML mapping, ``by_symbol`` is present
+            but not a mapping, or there is no non-empty ``default`` sleeve key.
     """
-    doc = cast("dict[str, object]", yaml.safe_load(text))
-    by_symbol = cast("dict[str, str]", doc.get("by_symbol", {}))
+    doc = _require_mapping(yaml.safe_load(text), "document")
+    raw_by_symbol = _require_mapping(doc.get("by_symbol") or {}, "'by_symbol'")
+    by_symbol = {str(k): str(v) for k, v in raw_by_symbol.items()}
     default = str(doc.get("default", ""))
     if not default:
         msg = f"crypto seed {_SEED_FILE} must define a non-empty 'default' sleeve key"
         raise ValueError(msg)
-    return CryptoSeed(by_symbol=dict(by_symbol), default=default)
+    return CryptoSeed(by_symbol=by_symbol, default=default)
 
 
 @cache

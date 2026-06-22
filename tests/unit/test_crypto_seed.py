@@ -24,6 +24,27 @@ def test_parse_seed_requires_non_empty_default() -> None:
         _parse_seed("version: 1\nby_symbol:\n  BTC: AC.ALTS.CRYPTO.BTC\n")
 
 
+def test_parse_seed_rejects_non_mapping_document() -> None:
+    # An empty file parses to None; a list/scalar is also not a mapping. Both must
+    # raise the documented ValueError, not an opaque AttributeError.
+    with pytest.raises(ValueError, match="document must be a mapping"):
+        _parse_seed("")
+    with pytest.raises(ValueError, match="document must be a mapping"):
+        _parse_seed("- just\n- a\n- list\n")
+
+
+def test_parse_seed_rejects_non_mapping_by_symbol() -> None:
+    with pytest.raises(ValueError, match="'by_symbol' must be a mapping"):
+        _parse_seed("default: AC.ALTS.CRYPTO.DIV\nby_symbol:\n  - BTC\n")
+
+
+def test_parse_seed_tolerates_null_by_symbol() -> None:
+    # `by_symbol:` with no value parses to None; treat it as an empty mapping.
+    seed = _parse_seed("default: AC.ALTS.CRYPTO.DIV\nby_symbol:\n")
+    assert seed.by_symbol == {}
+    assert seed.default == "AC.ALTS.CRYPTO.DIV"
+
+
 def test_apply_crypto_seed_assigns_known_symbol(sqlite_session: Session) -> None:
     sec = SecurityMaster(name="Bitcoin", symbol="BTC")
     sqlite_session.add(sec)
