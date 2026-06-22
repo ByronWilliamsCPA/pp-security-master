@@ -40,8 +40,14 @@ def _write_target(security: SecurityMaster, assignment: ManualAssignment) -> Non
         assignment: The validated assignment.
     """
     # GICS sector and BRX-Plus sleeve are independent axes (3-axis nav model): a
-    # security may carry both, so we write only the incoming kind's column(s) and
-    # never clear the others, even on a force re-classification.
+    # security may carry both, so writing one axis never clears the other (a GICS
+    # assignment leaves the BRX-Plus columns alone, and vice versa).
+    #
+    # Within the BRX-Plus axis, however, level1/level2/key must stay internally
+    # consistent: SLEEVE and CASH are two writers of the SAME axis. CASH therefore
+    # clears the leaf columns (brx_plus_level2/brx_plus) a prior SLEEVE assignment
+    # may have set; otherwise a sleeve->cash re-classification leaves level1="Cash"
+    # while the leaf still points into Alternatives (a self-contradictory row).
     if assignment.kind is AssignmentKind.GICS_SECTOR:
         security.industries_gics_sectors_level1 = resolve_gics_sector(assignment.value)
     elif assignment.kind is AssignmentKind.SLEEVE:
@@ -51,6 +57,8 @@ def _write_target(security: SecurityMaster, assignment: ManualAssignment) -> Non
         security.brx_plus = assignment.value
     elif assignment.kind is AssignmentKind.CASH:
         security.brx_plus_level1 = CASH_LEVEL1
+        security.brx_plus_level2 = None
+        security.brx_plus = None
     else:
         assert_never(assignment.kind)
 
@@ -92,6 +100,10 @@ def apply_manual_classification(
     security.classification_confidence = _MANUAL_CONFIDENCE
     security.classification_locked = True
     security.classified_by = classified_by
+    # #ASSUME: classified_at is stored as naive UTC by project convention (the
+    # column is a tz-naive DateTime, matching created_at/updated_at on the model).
+    # #VERIFY: keep this naive-UTC; introducing a tz-aware value here would create
+    # mixed naive/aware comparisons against the other timestamp columns.
     security.classified_at = datetime.now(UTC).replace(tzinfo=None)
     session.add(security)
     return ClassificationResult(

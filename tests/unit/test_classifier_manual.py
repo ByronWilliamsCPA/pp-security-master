@@ -65,6 +65,34 @@ def test_assign_cash_sets_cash_level1(sqlite_session: Session) -> None:
         classified_by="byron",
     )
     assert sec.brx_plus_level1 == "Cash & Cash Equivalents"
+    assert sec.brx_plus_level2 is None
+    assert sec.brx_plus is None
+
+
+def test_cash_after_sleeve_clears_stale_leaf(sqlite_session: Session) -> None:
+    """Re-classifying a sleeve row to cash clears the BRX-Plus leaf columns.
+
+    Regression: the CASH branch previously set only ``brx_plus_level1``, leaving a
+    prior sleeve's ``brx_plus_level2``/``brx_plus`` intact, which produced a row
+    reading level1="Cash" while the leaf still pointed into Alternatives.
+    """
+    sec = _new_security(sqlite_session)
+    apply_manual_classification(
+        sqlite_session,
+        sec,
+        ManualAssignment(AssignmentKind.SLEEVE, "AC.ALTS.CRYPTO.BTC"),
+        classified_by="byron",
+    )
+    apply_manual_classification(
+        sqlite_session,
+        sec,
+        ManualAssignment(AssignmentKind.CASH, "Cash & Cash Equivalents"),
+        classified_by="byron",
+        force=True,
+    )
+    assert sec.brx_plus_level1 == "Cash & Cash Equivalents"
+    assert sec.brx_plus_level2 is None
+    assert sec.brx_plus is None
 
 
 def test_locked_row_refuses_without_force(sqlite_session: Session) -> None:
