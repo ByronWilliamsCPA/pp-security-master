@@ -78,35 +78,171 @@ def _section(doc: dict[str, object], key: str) -> dict[str, str]:
     return dict(cast("dict[str, str]", doc.get(key, {})))
 
 
+def _resolve_override(
+    doc: dict[str, object],
+    key: str,
+    wrapper: str | None,
+    holding_intent: str | None,
+) -> str | None:
+    """Return a wrapper/intent-specific GL code for ``key``, if one matches.
+
+    Args:
+        doc: The parsed ibor_to_xero_gl crosswalk document.
+        key: The already-resolved classification key (BRX-Plus or Type).
+        wrapper: The holding's wrapper, if supplied by the caller.
+        holding_intent: The holding's current/non-current intent, if supplied.
+
+    Returns:
+        The override GL code when an entry's declared conditions all match the
+        supplied values, else ``None``.
+    """
+    overrides = cast("dict[str, list[dict[str, str]]]", doc.get("overrides", {}))
+    for entry in overrides.get(key, []):
+        want_wrapper = entry.get("wrapper")
+        want_intent = entry.get("holding_intent")
+        if want_wrapper is not None and want_wrapper != wrapper:
+            continue
+        if want_intent is not None and want_intent != holding_intent:
+            continue
+        gl = entry.get("gl")
+        if gl is not None:
+            return gl
+    return None
+
+
+def _is_authoritative(doc: dict[str, object]) -> bool:
+    """Return whether a crosswalk document is books-owner-authoritative.
+
+    A document is authoritative only when it sets ``complete: true``. The
+    ``ibor_to_xero_gl.yaml`` crosswalk deliberately withholds that flag while
+    its GL codes are PROVISIONAL pending master-COA sign-off, so this returns
+    ``False`` for it until the books owner sets the flag.
+
+    Args:
+        doc: A parsed crosswalk document.
+
+    Returns:
+        ``True`` only when ``complete`` is exactly ``True``.
+    """
+    return doc.get("complete") is True
+
+
 def resolve_gl_account(
     *,
     brx_plus_key: str | None = None,
     type_of_security: str | None = None,
+    wrapper: str | None = None,
+    holding_intent: str | None = None,
+    allow_provisional: bool = False,
     base: str | None = None,
 ) -> str | None:
     """Resolve the Xero GL account code for an IBOR holding.
 
     Resolution order matches ADR-016: a BRX-Plus key is most specific and wins;
-    otherwise fall back to the Type of Security. Returns ``None`` when neither
-    resolves (for example the cash sleeves listed as ``unresolved``).
+    otherwise fall back to the Type of Security. When ``wrapper`` or
+    ``holding_intent`` is supplied and the resolved key has an ``overrides``
+    entry whose conditions match, the override replaces the default.
+
+    #CRITICAL (financial) the ``ibor_to_xero_gl.yaml`` crosswalk is
+    NON-AUTHORITATIVE until the books owner verifies every code against the
+    master chart of accounts and sets ``complete: true``. Returning a postable
+    8-digit code from a draft crosswalk silently mis-states the ABOR. This
+    resolver therefore refuses to hand a code back from a non-authoritative
+    crosswalk unless the caller passes ``allow_provisional=True`` to opt into
+    draft data explicitly. The opt-in is greppable, so any posting path that
+    consumes draft codes is visible in review. #VERIFY before clearing the gate
+    that ``complete: true`` is set ONLY after master-COA sign-off.
 
     Args:
         brx_plus_key: The holding's BRX-Plus classification key, if known.
         type_of_security: The holding's Type of Security key, if known.
+        wrapper: Holding wrapper (``"direct"``, ``"fund"``, ``"etf"``,
+            ``"public"``); selects a wrapper-specific override when present.
+        holding_intent: ``"current"`` or ``"non_current"``; selects an
+            intent-specific override when present. Not derivable from PP data,
+            so it is a per-holding input.
+        allow_provisional: When ``False`` (the default), a code resolved from a
+            non-authoritative crosswalk (one without ``complete: true``) is
+            withheld and ``None`` is returned. Pass ``True`` to receive
+            provisional codes, acknowledging they are not COA-confirmed.
         base: Optional override for the crosswalks directory.
 
     Returns:
-        The 8-digit Xero GL account code, or ``None`` if unresolved.
+        The Xero GL account code, or ``None`` when nothing resolves OR when the
+        crosswalk is non-authoritative and ``allow_provisional`` is ``False``.
     """
     doc = _load("ibor_to_xero_gl.yaml", base)
+    resolved_key: str | None = None
+    default_gl: str | None = None
     if brx_plus_key:
         by_brx = _section(doc, "by_brx_plus")
         if brx_plus_key in by_brx:
-            return by_brx[brx_plus_key]
-    if type_of_security:
+            resolved_key, default_gl = brx_plus_key, by_brx[brx_plus_key]
+    if default_gl is None and type_of_security:
         by_type = _section(doc, "by_type_of_security")
         if type_of_security in by_type:
-            return by_type[type_of_security]
+            resolved_key, default_gl = type_of_security, by_type[type_of_security]
+    if resolved_key is None or default_gl is None:
+        return None
+    code = default_gl
+    if wrapper is not None or holding_intent is not None:
+        override = _resolve_override(doc, resolved_key, wrapper, holding_intent)
+        if override is not None:
+            code = override
+    # Financial gate: withhold codes from a draft crosswalk unless opted in.
+    if not _is_authoritative(doc) and not allow_provisional:
+        return None
+    return code
+
+
+def _longest_prefix_match(code: str, mapping: dict[str, str]) -> str | None:
+    """Return the value for the longest key in ``mapping`` that prefixes ``code``.
+
+    Args:
+        code: The full numeric industry code to classify.
+        mapping: A prefix-keyed mapping (e.g. ``by_sic_prefix``).
+
+    Returns:
+        The mapped value for the longest matching prefix, or ``None`` if no key
+        is a prefix of ``code``.
+    """
+    for length in range(len(code), 0, -1):
+        candidate = code[:length]
+        if candidate in mapping:
+            return mapping[candidate]
+    return None
+
+
+def resolve_gics_from_sic_naics(
+    *,
+    sic: str | None = None,
+    naics: str | None = None,
+    base: str | None = None,
+) -> str | None:
+    """Resolve a GICS sector code from an issuer's SIC or NAICS code.
+
+    Uses longest-prefix match so a deeper carve-out (e.g. SIC ``283`` drugs)
+    overrides its 2-digit group (SIC ``28`` chemicals). SIC is tried first when
+    both are supplied (it is the older, coarser scheme); #VERIFY this precedence
+    against issuer data if SIC and NAICS disagree.
+
+    Args:
+        sic: The issuer's SIC code (any length), if known.
+        naics: The issuer's NAICS code (any length), if known.
+        base: Optional override for the crosswalks directory.
+
+    Returns:
+        The GICS sector code, or ``None`` if no prefix matches either input.
+    """
+    doc = _load("sic_naics_to_gics.yaml", base)
+    if sic:
+        match = _longest_prefix_match(sic, _section(doc, "by_sic_prefix"))
+        if match is not None:
+            return match
+    if naics:
+        match = _longest_prefix_match(naics, _section(doc, "by_naics_prefix"))
+        if match is not None:
+            return match
     return None
 
 
@@ -142,3 +278,34 @@ def resolve_gics_from_provider(
         "by_provider_sector",
     )
     return mapping.get(provider_sector)
+
+
+def resolve_brx_plus_from_gics(
+    gics_sector: str,
+    *,
+    is_single_sector: bool,
+    base: str | None = None,
+) -> str | None:
+    """Resolve a BRX-Plus sleeve from a GICS sector for a single-sector holding.
+
+    Guardrail: GICS and BRX-Plus are orthogonal. Broad-market, factor, and region
+    holdings span all sectors and are assigned by mandate upstream, so this
+    resolver returns ``None`` unless the caller asserts the holding is
+    single-sector. An unknown sector code falls back to the thematic default.
+
+    Args:
+        gics_sector: A GICS sector code (e.g. ``"45"``).
+        is_single_sector: ``True`` only when the holding is known to be a
+            single-sector/thematic position; otherwise resolution is refused.
+        base: Optional override for the crosswalks directory.
+
+    Returns:
+        The BRX-Plus sleeve key, the thematic default for an unknown sector, or
+        ``None`` when the holding is not single-sector.
+    """
+    if not is_single_sector:
+        return None
+    doc = _load("gics_to_brx_plus.yaml", base)
+    by_sector = _section(doc, "by_gics_sector")
+    default = cast("str | None", doc.get("default_for_single_sector"))
+    return by_sector.get(gics_sector, default)

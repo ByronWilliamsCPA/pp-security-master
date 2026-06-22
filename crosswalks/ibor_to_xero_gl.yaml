@@ -1,24 +1,25 @@
-# IBOR classification -> Xero GL account crosswalk (ADR-016, Phase E2).
+# IBOR classification -> Xero GL account crosswalk (ADR-016, Phase E5).
 #
-# Maps an IBOR holding's classification to the 8-digit Xero GL account code it
-# books to in the ABOR. Resolution order: by_brx_plus (most specific) wins;
-# otherwise fall back to by_type_of_security. Every code here must exist as a
-# leaf key in taxonomies/accounting-xero-gl.taxonomy.json (enforced by
-# tests/unit/test_ibor_to_xero_gl_crosswalk.py).
-#
-# Seed mapping. Entries marked REVIEW are the holding-intent / structure
-# ambiguities ADR-016 flagged (e.g. a public REIT books differently than direct
-# property; a strategy held as a fund books to Mutual Funds). Refine per client.
+# Maps an IBOR holding's classification to the Xero GL account code it books to
+# in the ABOR. Resolution order: by_brx_plus (most specific) wins; otherwise fall
+# back to by_type_of_security. When the caller supplies wrapper/holding_intent,
+# an `overrides:` entry for the resolved key may replace the default. Every code
+# here must exist as a leaf key in taxonomies/accounting-xero-gl.taxonomy.json
+# (enforced by tests/unit/test_ibor_to_xero_gl_crosswalk.py).
 #
 # #ASSUME (financial) each classification books to the GL code listed here. A
-#   wrong code mis-states the ABOR financial statements. #VERIFY every mapping,
-#   and especially each REVIEW-tagged line, against the master COA before this
-#   crosswalk drives any posting; treat the seed as draft, not authoritative.
-# #EDGE the `unresolved` list has no GL assignment yet; a holding in those
-#   sleeves books nowhere automatically. #VERIFY the cash/MMF GL codes land in
-#   the master COA before relying on automatic GL assignment for them.
+#   wrong code mis-states the ABOR financial statements. #VERIFY every mapping
+#   against the master COA before this crosswalk drives any posting; treat it as
+#   draft, not authoritative, until the books owner signs off.
+# #ASSUME (financial) 11141000/11141100/11141200 are the correct cash / T-Bill /
+#   short-term-proxy GL leaves. These are PROVISIONAL placeholders, not confirmed
+#   COA codes. #VERIFY against the master COA before relying on cash GL postings.
 
 version: 1
+# No `complete:` flag is set here, deliberately. Unlike the sibling crosswalks,
+# this financial mapping stays non-authoritative until the books owner verifies
+# every code (cash leaves and REVIEW-line defaults) against the master COA; the
+# flag is withheld rather than set false to make the draft posture explicit.
 
 # Fallback: PP "Type of Security" key -> GL code.
 by_type_of_security:
@@ -28,7 +29,7 @@ by_type_of_security:
   Bond: "14201400"
   Option: "14201400"
   Index: "14201400"
-  Currency: "14201900"  # REVIEW: FX/currency holdings; Other Investments
+  Currency: "14201900"  # Other Investments; #VERIFY FX treatment vs cash
 
 # Preferred: BRX-Plus key -> GL code. Overrides by_type_of_security.
 by_brx_plus:
@@ -49,22 +50,32 @@ by_brx_plus:
   AC.FI.HIGH_YIELD: "14201400"
   AC.FI.MUNICIPALS: "14201400"
   AC.FI.INTL_EM: "14201400"
-  # Alternatives.
-  AC.ALTS.RE: "15111200"          # REVIEW: direct property; public REITs -> 14201400
+  # Alternatives. Defaults are the no-wrapper fallback; see overrides: below.
+  AC.ALTS.RE: "14201400"          # public-REIT default; direct property via override
   AC.ALTS.COMM: "14201900"        # Other Investments
-  AC.ALTS.MKT_NEUTRAL: "14201000" # REVIEW: fund-structured -> Mutual Funds
-  AC.ALTS.SYS_MULTI: "14201000"   # REVIEW: fund-structured -> Mutual Funds
+  AC.ALTS.MKT_NEUTRAL: "14201000" # fund-structured -> Mutual Funds; #VERIFY
+  AC.ALTS.SYS_MULTI: "14201000"   # fund-structured -> Mutual Funds; #VERIFY
   AC.ALTS.BUFFER: "14201400"      # defined-outcome ETFs are exchange-traded
   AC.ALTS.PRIV.EQUITY: "14201300" # Investment in Private Equity
-  AC.ALTS.PRIV.CREDIT: "14201100" # REVIEW: Partnerships vs Other Investments
+  AC.ALTS.PRIV.CREDIT: "14201100" # Investment in Partnerships; #VERIFY
   AC.ALTS.CRYPTO.BTC: "14121100"  # Digital Assets - Cost Basis
   AC.ALTS.CRYPTO.ETH: "14121100"
   AC.ALTS.CRYPTO.DIV: "14121100"
+  # Cash sleeves -> provisional cash-equivalent leaves (#VERIFY, not authoritative).
+  AC.CASH.MONEY_MARKET: "11141000"
+  AC.CASH.TBILLS: "11141100"
+  AC.CASH.SHORT_TERM: "11141200"
 
-# Classifications with no confirmed 8-digit investment GL code yet. These need
-# the cash/MMF GL codes from the master COA before they can be mapped; until
-# then a holding in these sleeves has no automatic GL assignment.
-unresolved:
-  - AC.CASH.MONEY_MARKET   # cash equivalents GL code TBD
-  - AC.CASH.TBILLS         # short-term investment GL code TBD
-  - AC.CASH.SHORT_TERM     # short-term investment GL code TBD
+# Wrapper / holding-intent overrides. Applied only when the caller supplies
+# wrapper or holding_intent to resolve_gl_account; the first entry whose declared
+# conditions all match wins, else the default above stands. Seeded only with the
+# code-named direct-vs-public REIT distinction; other wrapper variants are added
+# when the books owner supplies confirmed codes. #VERIFY each override.
+overrides:
+  AC.ALTS.RE:
+    - { wrapper: direct, gl: "15111200" }  # Investment Property - Buildings
+
+# All classifications now resolve; the cash sleeves moved into by_brx_plus as
+# provisional mappings (see #VERIFY above). Kept as an empty list so the section
+# is explicit rather than silently absent.
+unresolved: []
