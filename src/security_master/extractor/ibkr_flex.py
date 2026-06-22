@@ -34,6 +34,14 @@ from security_master.extractor._flex_common import (
     parse_decimal,
     parse_flex_date,
 )
+from security_master.extractor.ibkr_flex_records import (
+    ParsedCashTransaction,
+    ParsedCorporateAction,
+    ParsedTransfer,
+    cash_from_element,
+    corp_action_from_element,
+    transfer_from_element,
+)
 from security_master.storage.transaction_models import InteractiveBrokersTransaction
 
 # Account name is a constant: the Flex Trade record has no attribute that
@@ -201,6 +209,39 @@ def parse_ibkr_flex(xml_content: str) -> list[ParsedTrade]:
     """
     root = ET.fromstring(xml_content)
     return [_trade_from_element(trade) for trade in root.findall(".//Trade")]
+
+
+@dataclass(frozen=True)
+class IBKRFlexRecords:
+    """All record types parsed from one IBKR Flex document, in document order."""
+
+    trades: list[ParsedTrade]
+    cash_transactions: list[ParsedCashTransaction]
+    corporate_actions: list[ParsedCorporateAction]
+    transfers: list[ParsedTransfer]
+
+
+def parse_ibkr_flex_records(xml_content: str) -> IBKRFlexRecords:
+    """Parse every supported IBKR Flex record type in a single pass.
+
+    Args:
+        xml_content: The full IBKR Flex Query XML document as a string.
+
+    Returns:
+        An :class:`IBKRFlexRecords` with trades, cash transactions, corporate
+        actions, and transfers, each in document order.
+    """
+    root = ET.fromstring(xml_content)
+    return IBKRFlexRecords(
+        trades=[_trade_from_element(e) for e in root.findall(".//Trade")],
+        cash_transactions=[
+            cash_from_element(e) for e in root.findall(".//CashTransaction")
+        ],
+        corporate_actions=[
+            corp_action_from_element(e) for e in root.findall(".//CorporateAction")
+        ],
+        transfers=[transfer_from_element(e) for e in root.findall(".//Transfer")],
+    )
 
 
 class IBKRFlexImportService:
