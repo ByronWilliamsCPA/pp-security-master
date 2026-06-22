@@ -1,0 +1,34 @@
+# GICS sector -> BRX-Plus sleeve key. ADR-016 E3.
+#
+# CAUTION: GICS and BRX-Plus are orthogonal lenses. GICS classifies an issuer
+# by economic sector; BRX-Plus classifies a holding by portfolio strategy/factor
+# (US Core Beta, Factors, Intl Developed, EM, Sector/Thematic). There is no
+# clean function from one to the other:
+#   - A broad-market equity (e.g. total-market ETF) spans all GICS sectors and
+#     should be assigned by MANDATE (Core Beta / Factors / Intl / EM), not GICS.
+#   - Only single-sector or thematic holdings map meaningfully from GICS, and
+#     they land in the Sector / Thematic sleeve.
+#
+# So this file provides a default ONLY for single-sector/thematic equities; it
+# is intentionally NOT complete. Broad/factor/region holdings are assigned by
+# mandate upstream and must not be auto-assigned from GICS.
+#
+# BRX-Plus keys validated against brx-plus-byron.taxonomy.json by
+# tests/unit/test_classification_crosswalks.py.
+
+version: 1
+complete: false
+# Applies only when a holding is known to be single-sector/thematic.
+default_for_single_sector: "AC.EQUITY.SECTOR_THEMATIC"
+by_gics_sector:
+  "10": "AC.EQUITY.SECTOR_THEMATIC"  # Energy
+  "15": "AC.EQUITY.SECTOR_THEMATIC"  # Materials
+  "20": "AC.EQUITY.SECTOR_THEMATIC"  # Industrials
+  "25": "AC.EQUITY.SECTOR_THEMATIC"  # Consumer Discretionary
+  "30": "AC.EQUITY.SECTOR_THEMATIC"  # Consumer Staples
+  "35": "AC.EQUITY.SECTOR_THEMATIC"  # Health Care
+  "40": "AC.EQUITY.SECTOR_THEMATIC"  # Financials
+  "45": "AC.EQUITY.SECTOR_THEMATIC"  # Information Technology
+  "50": "AC.EQUITY.SECTOR_THEMATIC"  # Communication Services
+  "55": "AC.EQUITY.SECTOR_THEMATIC"  # Utilities
+  "60": "AC.EQUITY.SECTOR_THEMATIC"  # Real Estate

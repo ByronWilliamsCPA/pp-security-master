@@ -1,0 +1,25 @@
+# Provider sector -> GICS sector code. ADR-016 E3.
+#
+# Source: Morningstar 11-sector scheme, which pp-portfolio-classifier emits.
+# This is a clean 1:1 onto the 11 GICS sectors. GICS codes are validated
+# against industries-gics-sectors.taxonomy.json by
+# tests/unit/test_classification_crosswalks.py.
+#
+# To add another provider (e.g. OpenFIGI industrySector), add a sibling
+# mapping block keyed by provider name rather than overloading this one.
+
+version: 1
+provider: morningstar
+complete: true
+by_provider_sector:
+  Basic Materials: "15"          # Materials
+  Consumer Cyclical: "25"        # Consumer Discretionary
+  Financial Services: "40"       # Financials
+  Real Estate: "60"              # Real Estate
+  Communication Services: "50"   # Communication Services
+  Energy: "10"                   # Energy
+  Industrials: "20"              # Industrials
+  Technology: "45"               # Information Technology
+  Consumer Defensive: "30"       # Consumer Staples
+  Healthcare: "35"               # Health Care
+  Utilities: "55"                # Utilities

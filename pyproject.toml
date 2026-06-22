@@ -87,6 +87,12 @@ dev = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/security_master"]
 
+# Ship the repo-root crosswalk reference data inside the wheel so the resolver
+# (src/security_master/crosswalk.py) resolves it via importlib.resources in a
+# non-editable install. In-repo / editable runs still read the repo-root source.
+[tool.hatch.build.targets.wheel.force-include]
+"crosswalks" = "security_master/crosswalks"
+
 
 [tool.ruff]
 line-length = 88
