@@ -185,3 +185,29 @@ def test_import_broker_imports_ibkr_file(
 
     assert result.exit_code == 0, result.output
     assert "Imported 1 trade(s)" in result.output
+
+
+def test_import_broker_reports_per_type_counts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """import-broker echoes counts for every IBKR record type."""
+    from pathlib import Path
+
+    engine = _memory_engine()
+    monkeypatch.setattr(cli, "create_db_engine", lambda *_a, **_k: engine)
+    sample = (
+        Path(__file__).resolve().parents[2]
+        / "sample_data"
+        / "IBKR_Flex_Records_sample.xml"
+    )
+
+    result = CliRunner().invoke(
+        cli.app,
+        ["import-broker", str(sample), "--create-schema"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "1 trade(s)" in result.output
+    assert "1 cash transaction(s)" in result.output
+    assert "1 corporate action(s)" in result.output
+    assert "1 transfer(s)" in result.output
