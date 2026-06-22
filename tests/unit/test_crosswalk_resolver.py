@@ -3,6 +3,7 @@
 from security_master.crosswalk import (
     resolve_cfi_category,
     resolve_gics_from_provider,
+    resolve_gics_from_sic_naics,
     resolve_gl_account,
 )
 
@@ -66,3 +67,25 @@ def test_resolve_gics_from_provider() -> None:
     assert resolve_gics_from_provider("Energy") == "10"
     assert resolve_gics_from_provider("Healthcare") == "35"
     assert resolve_gics_from_provider("Not A Sector") is None
+
+
+def test_resolve_gics_from_sic_exact_and_prefix() -> None:
+    """SIC lookup uses longest-prefix match; a 3-digit carve-out beats its group."""
+    assert resolve_gics_from_sic_naics(sic="13") == "10"  # Oil & Gas -> Energy
+    assert resolve_gics_from_sic_naics(sic="2834") == "35"  # 283 drugs -> Health Care
+    assert resolve_gics_from_sic_naics(sic="2890") == "15"  # 28 chemicals -> Materials
+    assert resolve_gics_from_sic_naics(sic="9999") is None  # no matching prefix
+
+
+def test_resolve_gics_from_naics_prefix_tie_break() -> None:
+    """NAICS lookup prefers the deeper prefix (211 Energy beats 21 Materials)."""
+    assert resolve_gics_from_sic_naics(naics="211110") == "10"  # Oil & Gas Extraction
+    assert resolve_gics_from_sic_naics(naics="212") == "15"  # Mining (ex O&G)
+    assert resolve_gics_from_sic_naics(naics="54151") == "45"  # Computer Systems Design
+    assert resolve_gics_from_sic_naics(naics="00") is None
+
+
+def test_resolve_gics_sic_takes_precedence_over_naics() -> None:
+    """When both are supplied, SIC is tried first."""
+    assert resolve_gics_from_sic_naics(sic="60", naics="00") == "40"
+    assert resolve_gics_from_sic_naics(sic=None, naics="52") == "40"

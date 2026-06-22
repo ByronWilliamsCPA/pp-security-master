@@ -159,6 +159,57 @@ def resolve_gl_account(
     return default_gl
 
 
+def _longest_prefix_match(code: str, mapping: dict[str, str]) -> str | None:
+    """Return the value for the longest key in ``mapping`` that prefixes ``code``.
+
+    Args:
+        code: The full numeric industry code to classify.
+        mapping: A prefix-keyed mapping (e.g. ``by_sic_prefix``).
+
+    Returns:
+        The mapped value for the longest matching prefix, or ``None`` if no key
+        is a prefix of ``code``.
+    """
+    for length in range(len(code), 0, -1):
+        candidate = code[:length]
+        if candidate in mapping:
+            return mapping[candidate]
+    return None
+
+
+def resolve_gics_from_sic_naics(
+    *,
+    sic: str | None = None,
+    naics: str | None = None,
+    base: str | None = None,
+) -> str | None:
+    """Resolve a GICS sector code from an issuer's SIC or NAICS code.
+
+    Uses longest-prefix match so a deeper carve-out (e.g. SIC ``283`` drugs)
+    overrides its 2-digit group (SIC ``28`` chemicals). SIC is tried first when
+    both are supplied (it is the older, coarser scheme); #VERIFY this precedence
+    against issuer data if SIC and NAICS disagree.
+
+    Args:
+        sic: The issuer's SIC code (any length), if known.
+        naics: The issuer's NAICS code (any length), if known.
+        base: Optional override for the crosswalks directory.
+
+    Returns:
+        The GICS sector code, or ``None`` if no prefix matches either input.
+    """
+    doc = _load("sic_naics_to_gics.yaml", base)
+    if sic:
+        match = _longest_prefix_match(sic, _section(doc, "by_sic_prefix"))
+        if match is not None:
+            return match
+    if naics:
+        match = _longest_prefix_match(naics, _section(doc, "by_naics_prefix"))
+        if match is not None:
+            return match
+    return None
+
+
 def resolve_cfi_category(type_of_security: str, base: str | None = None) -> str | None:
     """Resolve the CFI (ISO 10962) category letter for a Type of Security.
 
