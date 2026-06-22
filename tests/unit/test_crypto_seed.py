@@ -3,7 +3,11 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from security_master.classifier.crypto_seed import apply_crypto_seed, load_crypto_seed
+from security_master.classifier.crypto_seed import (
+    _parse_seed,
+    apply_crypto_seed,
+    load_crypto_seed,
+)
 from security_master.storage.models import SecurityMaster
 
 pytestmark = [pytest.mark.unit, pytest.mark.classifier]
@@ -13,6 +17,11 @@ def test_load_crypto_seed_parses_symbols() -> None:
     seed = load_crypto_seed()
     assert seed.by_symbol["BTC"] == "AC.ALTS.CRYPTO.BTC"
     assert seed.default == "AC.ALTS.CRYPTO.DIV"
+
+
+def test_parse_seed_requires_non_empty_default() -> None:
+    with pytest.raises(ValueError, match="default"):
+        _parse_seed("version: 1\nby_symbol:\n  BTC: AC.ALTS.CRYPTO.BTC\n")
 
 
 def test_apply_crypto_seed_assigns_known_symbol(sqlite_session: Session) -> None:

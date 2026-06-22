@@ -35,7 +35,8 @@ class CryptoSeed:
     """Parsed crypto seed.
 
     Attributes:
-        by_symbol: Mapping of crypto symbol to BRX-Plus leaf key.
+        by_symbol: Mapping of crypto symbol to BRX-Plus leaf key. Treat as
+            read-only; the loaded seed is cached and shared.
         default: Fallback BRX-Plus leaf key for unlisted crypto symbols.
     """
 
@@ -58,6 +59,27 @@ def _read_seed(name: str) -> str:
     return (_REPO_SEED_DIR / name).read_text(encoding="utf-8")
 
 
+def _parse_seed(text: str) -> CryptoSeed:
+    """Parse and validate crypto seed YAML text.
+
+    Args:
+        text: The raw YAML text of the crypto seed.
+
+    Returns:
+        The validated ``CryptoSeed``.
+
+    Raises:
+        ValueError: If the seed has no non-empty ``default`` sleeve key.
+    """
+    doc = cast("dict[str, object]", yaml.safe_load(text))
+    by_symbol = cast("dict[str, str]", doc.get("by_symbol", {}))
+    default = str(doc.get("default", ""))
+    if not default:
+        msg = f"crypto seed {_SEED_FILE} must define a non-empty 'default' sleeve key"
+        raise ValueError(msg)
+    return CryptoSeed(by_symbol=dict(by_symbol), default=default)
+
+
 @cache
 def load_crypto_seed() -> CryptoSeed:
     """Load and cache the committed crypto seed.
@@ -65,9 +87,7 @@ def load_crypto_seed() -> CryptoSeed:
     Returns:
         The parsed ``CryptoSeed``.
     """
-    doc = cast("dict[str, object]", yaml.safe_load(_read_seed(_SEED_FILE)))
-    by_symbol = cast("dict[str, str]", doc.get("by_symbol", {}))
-    return CryptoSeed(by_symbol=dict(by_symbol), default=str(doc.get("default", "")))
+    return _parse_seed(_read_seed(_SEED_FILE))
 
 
 def apply_crypto_seed(
