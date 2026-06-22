@@ -111,3 +111,30 @@ def test_crosswalk_mapping_sections_present() -> None:
             f"crosswalk section '{section}' is empty; "
             "the drift guard would validate nothing"
         )
+
+
+def test_override_gl_codes_are_eight_digit_numeric() -> None:
+    """Override GL codes follow the 8-digit shape, like the taxonomy leaves."""
+    cw = _crosswalk()
+    overrides = cast("dict[str, list[dict[str, str]]]", cw.get("overrides", {}))
+    bad = {
+        e["gl"]
+        for entries in overrides.values()
+        for e in entries
+        if "gl" in e and not (e["gl"].isdigit() and len(e["gl"]) == 8)
+    }
+    assert not bad, f"override GL codes not 8-digit numeric: {bad}"
+
+
+def test_override_entries_declare_a_condition() -> None:
+    """Each override entry must declare at least one selector so it cannot match
+    unconditionally and shadow the default."""
+    cw = _crosswalk()
+    overrides = cast("dict[str, list[dict[str, str]]]", cw.get("overrides", {}))
+    unconditional = {
+        key
+        for key, entries in overrides.items()
+        for e in entries
+        if not ({"wrapper", "holding_intent"} & set(e))
+    }
+    assert not unconditional, f"override entries with no condition: {unconditional}"
