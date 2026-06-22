@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, assert_never
 
 from security_master.classifier.taxonomy_lookup import (
     CASH_LEVEL1,
@@ -39,6 +39,9 @@ def _write_target(security: SecurityMaster, assignment: ManualAssignment) -> Non
         security: The row to mutate.
         assignment: The validated assignment.
     """
+    # GICS sector and BRX-Plus sleeve are independent axes (3-axis nav model): a
+    # security may carry both, so we write only the incoming kind's column(s) and
+    # never clear the others, even on a force re-classification.
     if assignment.kind is AssignmentKind.GICS_SECTOR:
         security.industries_gics_sectors_level1 = resolve_gics_sector(assignment.value)
     elif assignment.kind is AssignmentKind.SLEEVE:
@@ -46,8 +49,10 @@ def _write_target(security: SecurityMaster, assignment: ManualAssignment) -> Non
         security.brx_plus_level1 = level1
         security.brx_plus_level2 = leaf
         security.brx_plus = assignment.value
-    else:  # AssignmentKind.CASH
+    elif assignment.kind is AssignmentKind.CASH:
         security.brx_plus_level1 = CASH_LEVEL1
+    else:
+        assert_never(assignment.kind)
 
 
 def apply_manual_classification(

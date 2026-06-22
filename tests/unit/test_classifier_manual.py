@@ -103,3 +103,24 @@ def test_force_overrides_locked_row_and_restamps(sqlite_session: Session) -> Non
     assert sec.industries_gics_sectors_level1 == "Financials"
     assert sec.classification_locked is True
     assert sec.classified_by == "byron2"
+
+
+def test_axes_are_independent_no_cross_clear(sqlite_session: Session) -> None:
+    sec = _new_security(sqlite_session)
+    apply_manual_classification(
+        sqlite_session,
+        sec,
+        ManualAssignment(AssignmentKind.SLEEVE, "AC.ALTS.CRYPTO.BTC"),
+        classified_by="byron",
+    )
+    apply_manual_classification(
+        sqlite_session,
+        sec,
+        ManualAssignment(AssignmentKind.GICS_SECTOR, "Information Technology"),
+        classified_by="byron",
+        force=True,
+    )
+    # GICS axis updated; BRX-Plus sleeve axis retained (independent axes).
+    assert sec.industries_gics_sectors_level1 == "Information Technology"
+    assert sec.brx_plus == "AC.ALTS.CRYPTO.BTC"
+    assert sec.brx_plus_level1 == "Alternatives"
