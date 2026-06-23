@@ -52,12 +52,13 @@ class ParsedOpenPosition:
     side: str | None
 
 
-def _require(value: str | None, field: str) -> str:
+def _require(value: str | None, field: str, record: str = "OpenPosition") -> str:
     """Return a required attribute or raise with a precise message.
 
     Args:
         value: Raw attribute value.
         field: Attribute name, for the error message.
+        record: Record type name, for the error message.
 
     Returns:
         The non-empty attribute value.
@@ -67,17 +68,20 @@ def _require(value: str | None, field: str) -> str:
     """
     cleaned = none_if_empty(value)
     if cleaned is None:
-        msg = f"IBKR OpenPosition is missing required attribute {field!r}"
+        msg = f"IBKR {record} is missing required attribute {field!r}"
         raise ValueError(msg)
     return cleaned
 
 
-def _require_decimal(value: str | None, field: str) -> Decimal:
+def _require_decimal(
+    value: str | None, field: str, record: str = "OpenPosition"
+) -> Decimal:
     """Return a required decimal attribute or raise with a precise message.
 
     Args:
         value: Raw numeric attribute value.
         field: Attribute name, for the error message.
+        record: Record type name, for the error message.
 
     Returns:
         The parsed Decimal.
@@ -87,7 +91,28 @@ def _require_decimal(value: str | None, field: str) -> Decimal:
     """
     parsed = parse_decimal(value)
     if parsed is None:
-        msg = f"IBKR OpenPosition is missing required numeric attribute {field!r}"
+        msg = f"IBKR {record} is missing required numeric attribute {field!r}"
+        raise ValueError(msg)
+    return parsed
+
+
+def _require_date(value: str | None, field: str, record: str = "OpenPosition") -> date:
+    """Return a required parsed date or raise with a precise message.
+
+    Args:
+        value: Raw date attribute value.
+        field: Attribute name, for the error message.
+        record: Record type name, for the error message.
+
+    Returns:
+        The parsed date.
+
+    Raises:
+        ValueError: When the date is empty, absent, or unparseable.
+    """
+    parsed = parse_flex_date(value)
+    if parsed is None:
+        msg = f"IBKR {record} is missing required date attribute {field!r}"
         raise ValueError(msg)
     return parsed
 
@@ -101,19 +126,11 @@ def open_position_from_element(elem: ET.Element) -> ParsedOpenPosition:
     Returns:
         A :class:`ParsedOpenPosition` with nullable attributes normalized and
         date/decimal fields typed.
-
-    Raises:
-        ValueError: When a required attribute (accountId, reportDate, conid,
-            position, currency) is absent.
     """
     a = elem.attrib
-    report_date = parse_flex_date(a.get("reportDate"))
-    if report_date is None:
-        msg = "IBKR OpenPosition is missing required attribute 'reportDate'"
-        raise ValueError(msg)
     return ParsedOpenPosition(
         account_number=_require(a.get("accountId"), "accountId"),
-        report_date=report_date,
+        report_date=_require_date(a.get("reportDate"), "reportDate"),
         conid=_require(a.get("conid"), "conid"),
         symbol=dash_to_none(a.get("symbol")),
         isin=dash_to_none(a.get("isin")),
