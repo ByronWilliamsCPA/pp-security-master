@@ -1,13 +1,18 @@
 """The ADR-003 classification chain: fund -> equity -> bond -> manual.
 
-Phase D3 implements ONLY the Tier-4 manual path (see ``manual.py``). The three
-automated tiers below are explicit future-stubs, not silent gaps: each raises
-``NotImplementedError`` referencing ADR-005 (external-API sourcing, future). The
-orchestrator documents the intended order; until the automated tiers land, the
-working entry point is ``manual.apply_manual_classification``.
+Phase D3 implements ONLY the Tier-4 manual path (see ``manual.py``). Tier-3
+equity is now live (see ``equity.py``). The remaining automated tiers are
+explicit future-stubs, not silent gaps: each raises ``NotImplementedError``
+referencing ADR-005 (external-API sourcing, future). The orchestrator
+documents the intended order; until all automated tiers land, the working
+entry point for manual classification is ``manual.apply_manual_classification``.
 """
 
 from __future__ import annotations
+
+from security_master.classifier.equity import classify_equity
+
+__all__ = ["classify_bond", "classify_equity", "classify_fund", "classify_security"]
 
 _FUTURE = "automated classification is future work; see ADR-005"
 
@@ -23,20 +28,6 @@ def classify_fund(identifier: str) -> None:
     """
     # TODO(ADR-005): pp-portfolio-classifier look-through. Honor classification_locked.
     msg = f"fund {_FUTURE}"
-    raise NotImplementedError(msg)
-
-
-def classify_equity(identifier: str) -> None:
-    """Tier-3 listed-equity classification (future).
-
-    Args:
-        identifier: Security identifier (ISIN or ticker).
-
-    Raises:
-        NotImplementedError: Always; see ADR-005.
-    """
-    # TODO(ADR-005): OpenFIGI + SIC/NAICS -> GICS crosswalk. Honor classification_locked.
-    msg = f"equity {_FUTURE}"
     raise NotImplementedError(msg)
 
 
