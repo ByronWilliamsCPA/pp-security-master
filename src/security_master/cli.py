@@ -465,6 +465,7 @@ def reconcile_positions_cmd(
             click.echo(f"  Summary: {summary_line}")
     finally:
         session.close()
+        engine.dispose()
 
 
 if __name__ == "__main__":
