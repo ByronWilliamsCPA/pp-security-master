@@ -270,7 +270,7 @@ sortedcontainers==2.4.0
     # via
     #   cyclonedx-python-lib
     #   hypothesis
-sqlalchemy==2.0.50
+sqlalchemy==2.0.51
     # via
     #   alembic
     #   pp-security-master
