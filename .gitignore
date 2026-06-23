@@ -136,3 +136,9 @@ docs/superpowers/
 # reference only; never committed. See ADR-008 for the planned upstream
 # subtree integration of pp-portfolio-classifier.
 PortfolioPerformance/
+
+# Local-only working copies pulled from Portfolio Performance (real-holdings
+# data) used for reference while developing classification and extraction.
+# Never committed; treat as untrusted local input. The folder itself is kept
+# out of git, including any README placeholder inside it.
+local/

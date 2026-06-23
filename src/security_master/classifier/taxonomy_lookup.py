@@ -140,6 +140,43 @@ def resolve_gics_sector(value: str) -> str:
     return canonical
 
 
+@cache
+def _gics_sector_codes() -> dict[str, str]:
+    """Map GICS-L1 sector codes (taxonomy ``key``) to canonical sector names.
+
+    Returns:
+        Mapping of code (e.g. ``"45"``) to canonical name (e.g.
+        ``"Information Technology"``).
+    """
+    codes: dict[str, str] = {}
+    for node in _categories(_read_taxonomy(_GICS_SECTORS_FILE)):
+        key = _str_field(node, "key")
+        name = _str_field(node, "name")
+        if key is not None and name is not None:
+            codes[key] = name
+    return codes
+
+
+def resolve_gics_sector_by_code(code: str) -> str:
+    """Return the canonical GICS-L1 sector name for a GICS sector code.
+
+    Args:
+        code: A GICS-L1 sector code (e.g. ``"45"``).
+
+    Returns:
+        The canonical sector name (e.g. ``"Information Technology"``).
+
+    Raises:
+        UnknownClassificationValueError: If the code is not one of the 11 sectors.
+    """
+    name = _gics_sector_codes().get(code.strip())
+    if name is None:
+        valid = ", ".join(sorted(_gics_sector_codes()))
+        msg = f"unknown GICS-L1 sector code {code!r}; valid: {valid}"
+        raise UnknownClassificationValueError(msg)
+    return name
+
+
 def resolve_brx_plus_sleeve(key: str) -> tuple[str, str]:
     """Return ``(level1_name, leaf_name)`` for a BRX-Plus leaf key.
 

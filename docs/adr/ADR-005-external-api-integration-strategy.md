@@ -1,7 +1,7 @@
 # ADR-005: External API Integration Strategy
 
 **Date**: 2025-08-22  
-**Status**: Deferred (accepted in principle; not yet implemented as of 2026-06-19)  
+**Status**: Partially Accepted (minimal OpenFIGI + SEC EDGAR framework implemented 2026-06-23: on-disk SQLite cache, tenacity retry/backoff, per-provider rate limiting, graceful degradation. Alpha Vantage / FMP, Redis, and the stateful circuit breaker remain future.)  
 **Deciders**: Byron, Development Team  
 **Consulted**: OpenFIGI API Documentation, Alpha Vantage Rate Limits, Securities Classification Requirements  
 **Informed**: Data Quality Team, Infrastructure Team  
