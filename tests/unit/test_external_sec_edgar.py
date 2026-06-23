@@ -101,6 +101,38 @@ def test_user_agent_header_is_sent(tmp_path: Path) -> None:
         cache.close()
 
 
+def test_int_sic_is_zero_padded_to_four_digits(tmp_path: Path) -> None:
+    """EDGAR may return SIC as a JSON number; leading zeros must be preserved."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "company_tickers" in str(request.url):
+            return httpx.Response(200, json=_TICKERS)
+        return httpx.Response(200, json={"sic": 100})
+
+    client, base, cache = _make(httpx.MockTransport(handler), tmp_path)
+    try:
+        assert client.sic_for_symbol("AAPL") == "0100"
+    finally:
+        base.close()
+        cache.close()
+
+
+def test_short_string_sic_is_zero_padded(tmp_path: Path) -> None:
+    """A SIC string with stripped leading zeros is normalized to 4 digits."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "company_tickers" in str(request.url):
+            return httpx.Response(200, json=_TICKERS)
+        return httpx.Response(200, json={"sic": "100"})
+
+    client, base, cache = _make(httpx.MockTransport(handler), tmp_path)
+    try:
+        assert client.sic_for_symbol("AAPL") == "0100"
+    finally:
+        base.close()
+        cache.close()
+
+
 def test_malformed_submissions_returns_none(tmp_path: Path) -> None:
     """A submissions payload missing the 'sic' key returns None gracefully."""
 

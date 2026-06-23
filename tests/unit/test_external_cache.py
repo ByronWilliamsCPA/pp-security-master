@@ -41,3 +41,18 @@ def test_expired_entry_returns_none(cache: ResponseCache) -> None:
 def test_providers_are_isolated(cache: ResponseCache) -> None:
     cache.store("openfigi", "k", "a")
     assert cache.get("sec_edgar", "k") is None
+
+
+def test_invalidate_removes_entry(cache: ResponseCache) -> None:
+    cache.store("openfigi", "k", "v")
+    cache.invalidate("openfigi", "k")
+    assert cache.get("openfigi", "k") is None
+
+
+def test_invalidate_absent_key_is_noop(cache: ResponseCache) -> None:
+    cache.invalidate("openfigi", "absent")  # must not raise
+
+
+def test_non_positive_ttl_rejected(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="ttl_days must be positive"):
+        ResponseCache(tmp_path / "bad.sqlite3", ttl_days=0)

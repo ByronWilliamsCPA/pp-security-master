@@ -96,14 +96,43 @@ class ExternalHTTPClient:
             The decoded JSON (object). Treat as untrusted data.
 
         Raises:
-            json.JSONDecodeError: If the response body is not valid JSON.
+            ExternalAPIError: On exhausted retries, a non-retryable HTTP error,
+                or a response body that is not valid JSON.
         """  # DOC NOQA: DOC502
         cached = self._cache.get(self._provider, cache_key)
         if cached is not None:
-            return cast("object", json.loads(cached))
+            return self._decode(cached, cache_key, cached=True)
         body = self._fetch_with_retry(url, method, headers, json_body)
         self._cache.store(self._provider, cache_key, body)
-        return cast("object", json.loads(body))
+        return self._decode(body, cache_key, cached=False)
+
+    def _decode(self, body: str, cache_key: str, *, cached: bool) -> object:
+        """JSON-decode a body, converting a non-JSON payload to ExternalAPIError.
+
+        A provider returning a 2xx with a non-JSON body (HTML error page, gateway
+        interstitial, truncated payload) would otherwise raise ``JSONDecodeError``,
+        which callers do not catch, crashing the batch. Converting it to the
+        framework's typed error lets callers degrade gracefully. A poisoned cache
+        row is invalidated so it does not keep failing for the full TTL.
+
+        Args:
+            body: The raw response or cached body.
+            cache_key: Provider-scoped cache key (for invalidation + diagnostics).
+            cached: Whether ``body`` came from the cache (drives invalidation).
+
+        Returns:
+            The decoded JSON (object). Treat as untrusted data.
+
+        Raises:
+            ExternalAPIError: If the body is not valid JSON.
+        """
+        try:
+            return cast("object", json.loads(body))
+        except json.JSONDecodeError as exc:
+            if cached:
+                self._cache.invalidate(self._provider, cache_key)
+            msg = f"non-JSON body for {cache_key} (cached={cached}): {exc}"
+            raise ExternalAPIError(provider=self._provider, message=msg) from exc
 
     def _fetch_with_retry(
         self,
@@ -166,12 +195,13 @@ class ExternalHTTPClient:
             json_body: Optional JSON request body.
 
         Returns:
-            The raw response text on a successful (2xx/3xx) response.
+            The raw response text on a successful (2xx) response.
 
         Raises:
             _RetryableHTTPError: When the response status is in
                 ``_RETRYABLE_STATUS`` (tenacity will retry).
-            ExternalAPIError: When the response is a non-retryable 4xx/5xx.
+            ExternalAPIError: When the response is a non-retryable non-2xx
+                (3xx/4xx/5xx).
         """
         self._respect_rate_limit()
         response = self._http.request(
@@ -180,7 +210,10 @@ class ExternalHTTPClient:
         if response.status_code in _RETRYABLE_STATUS:
             msg = f"retryable status {response.status_code}"
             raise _RetryableHTTPError(msg)
-        if response.status_code >= 400:
+        # httpx.Client does not follow redirects by default, so a 3xx body is a
+        # redirect stub, not JSON. Treat any non-2xx as an error rather than
+        # caching an unparseable body.
+        if response.status_code >= 300:
             msg = f"status {response.status_code}"
             raise ExternalAPIError(provider=self._provider, message=msg)
         return response.text

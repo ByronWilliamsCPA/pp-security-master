@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # #ASSUME (external resource): the OpenFIGI free tier (anonymous or keyed) is
@@ -47,6 +47,53 @@ class ExternalAPISettings(BaseSettings):
     sec_tickers_url: str = _DEFAULT_SEC_TICKERS_URL
     sec_submissions_url: str = _DEFAULT_SEC_SUBMISSIONS_URL
     cache_path: Path = Path("data/cache/external_api.sqlite3")
-    cache_ttl_days: int = Field(default=30, gt=0)
+    cache_ttl_days: int = Field(default=30, gt=0, le=3650)
     min_request_interval_seconds: float = Field(default=0.2, ge=0)
-    max_retries: int = Field(default=4, ge=0)
+    max_retries: int = Field(default=4, ge=0, le=10)
+
+    @field_validator("openfigi_base_url", "sec_tickers_url", "sec_submissions_url")
+    @classmethod
+    def _require_https(cls, value: str) -> str:
+        """Require an https URL so the API key is never sent in cleartext.
+
+        Args:
+            value: A configured provider URL.
+
+        Returns:
+            The validated URL.
+
+        Raises:
+            ValueError: If the URL is empty or not https.
+        """
+        if not value.startswith("https://"):
+            msg = f"expected an https:// URL, got {value!r}"
+            raise ValueError(msg)
+        return value
+
+    @field_validator("cache_path")
+    @classmethod
+    def _cache_path_must_be_gitignored(cls, value: Path) -> Path:
+        """Enforce the ADR-015 licensing invariant in code, not just docs.
+
+        The cache holds raw licensed provider JSON, so its path must resolve
+        somewhere git ignores it (a ``.sqlite3`` suffix, covered by the
+        ``*.sqlite3`` rule, or any path under a ``data/`` directory). An
+        operator override outside those would let licensed data be committed.
+
+        Args:
+            value: The configured cache path.
+
+        Returns:
+            The validated path.
+
+        Raises:
+            ValueError: If the path is not covered by a gitignore rule.
+        """
+        if value.suffix == ".sqlite3" or "data" in value.parts:
+            return value
+        msg = (
+            f"cache_path {value} is not gitignored; raw licensed provider JSON "
+            "could be committed (ADR-015). Use a '.sqlite3' suffix or a path "
+            "under 'data/'."
+        )
+        raise ValueError(msg)

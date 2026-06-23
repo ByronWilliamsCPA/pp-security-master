@@ -9,6 +9,7 @@ manual.py: honors the override lock, writes provenance, but never sets the lock
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Protocol
@@ -32,6 +33,7 @@ if TYPE_CHECKING:
 
 _TIER3_CONFIDENCE = Decimal("0.80")  # ADR-003 Tier-3 band (below Tier-2 >= 0.90)
 _AUTO = "auto"
+_LOGGER = logging.getLogger(__name__)
 
 
 class _OpenFIGI(Protocol):
@@ -83,7 +85,18 @@ def classify_equity(
     try:
         sector_name = resolve_gics_sector_by_code(gics_code)
     except UnknownClassificationValueError:
-        return None  # crosswalk produced a code the taxonomy does not know
+        # Internal crosswalk/taxonomy drift (our own data bug), not an outage:
+        # log with traceback so it surfaces rather than silently degrading real,
+        # classifiable equities to the manual queue.
+        _LOGGER.exception(
+            "crosswalk/taxonomy drift: code %r (source=%s, isin=%s, symbol=%s) "
+            "is not a known GICS sector",
+            gics_code,
+            source,
+            security.isin,
+            security.symbol,
+        )
+        return None
 
     security.industries_gics_sectors_level1 = sector_name
     security.classification_tier = ClassificationTier.EXTERNAL_API
@@ -91,6 +104,8 @@ def classify_equity(
     security.classification_confidence = _TIER3_CONFIDENCE
     security.classified_by = _AUTO
     # #ASSUME (data integrity): naive-UTC, matching the other timestamp columns.
+    # #VERIFY the sibling timestamp columns (created_at/updated_at, manual.py
+    # classified_at) all store naive-UTC; if any becomes tz-aware, align this.
     security.classified_at = datetime.now(UTC).replace(tzinfo=None)
     session.add(security)
     return ClassificationResult(
@@ -112,8 +127,17 @@ def _safe_map(openfigi: _OpenFIGI, security: SecurityMaster) -> OpenFIGIRecord |
         return None
     try:
         return openfigi.map_identifier(isin=security.isin, symbol=security.symbol)
-    except ExternalAPIError:
-        return None  # graceful degradation: never crash the batch
+    except ExternalAPIError as exc:
+        # Graceful degradation: never crash the batch. Log so a systemic outage
+        # or misconfigured key (every row degrading) is distinguishable from a
+        # genuine no-match.
+        _LOGGER.warning(
+            "openfigi degraded for isin=%s symbol=%s: %s",
+            security.isin,
+            security.symbol,
+            exc,
+        )
+        return None
 
 
 def _resolve_sector(security: SecurityMaster, edgar: _Edgar) -> tuple[str, str] | None:
@@ -133,8 +157,10 @@ def _resolve_sector(security: SecurityMaster, edgar: _Edgar) -> tuple[str, str] 
     if security.symbol:
         try:
             sic = edgar.sic_for_symbol(security.symbol)
-        except ExternalAPIError:
-            sic = None  # graceful degradation
+        except ExternalAPIError as exc:
+            # Graceful degradation: log so a systemic EDGAR outage is visible.
+            _LOGGER.warning("edgar degraded for symbol=%s: %s", security.symbol, exc)
+            sic = None
         if sic:
             gics = resolve_gics_from_sic_naics(sic=sic)
             if gics is not None:

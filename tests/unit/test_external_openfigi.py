@@ -9,7 +9,7 @@ import pytest
 
 from security_master.external.cache import ResponseCache
 from security_master.external.http import ExternalHTTPClient
-from security_master.external.openfigi import OpenFIGIClient
+from security_master.external.openfigi import OpenFIGIClient, OpenFIGIRecord
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -153,3 +153,15 @@ def test_maps_ticker_when_isin_not_provided(tmp_path: Path) -> None:
     finally:
         base.close()
         cache.close()
+
+
+@pytest.mark.parametrize("sector", ["Equity", "EQUITY", "equity", " Equity "])
+def test_is_equity_is_case_and_whitespace_insensitive(sector: str) -> None:
+    """An upstream casing or whitespace change must not flip the equity check."""
+    assert OpenFIGIRecord(figi="BBG", market_sector=sector).is_equity()
+
+
+@pytest.mark.parametrize("sector", ["Corp", "", "Equities"])
+def test_is_equity_false_for_non_equity_sectors(sector: str) -> None:
+    """Non-equity market sectors (including empty) return False."""
+    assert not OpenFIGIRecord(figi="BBG", market_sector=sector).is_equity()

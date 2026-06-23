@@ -107,6 +107,56 @@ def test_transport_error_retried_then_succeeds(tmp_path: Path) -> None:
     cache.close()
 
 
+def test_non_json_2xx_body_raises_external_api_error(tmp_path: Path) -> None:
+    # A 200 with a non-JSON body (HTML error page) must surface as the framework's
+    # typed error, not a raw JSONDecodeError that callers do not catch.
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text="<html>maintenance</html>")
+
+    cache = ResponseCache(tmp_path / "c.sqlite3", ttl_days=30)
+    client = _client(httpx.MockTransport(handler), cache)
+    with pytest.raises(ExternalAPIError):
+        client.get_json("https://api.example/x", cache_key="k")
+    client.close()
+    cache.close()
+
+
+def test_poisoned_cache_row_is_invalidated(tmp_path: Path) -> None:
+    # A non-JSON body already in the cache must raise once, then be invalidated so
+    # the next call re-fetches rather than failing for the full TTL.
+    calls = {"n": 0}
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(200, json={"ok": True})
+
+    cache = ResponseCache(tmp_path / "c.sqlite3", ttl_days=30)
+    cache.store("openfigi", "k", "<html>poison</html>")
+    client = _client(httpx.MockTransport(handler), cache)
+    with pytest.raises(ExternalAPIError):
+        client.get_json("https://api.example/x", cache_key="k")
+    assert cache.get("openfigi", "k") is None  # poisoned row dropped
+    assert client.get_json("https://api.example/x", cache_key="k") == {"ok": True}
+    assert calls["n"] == 1  # re-fetched after invalidation
+    client.close()
+    cache.close()
+
+
+def test_3xx_raises_external_api_error(tmp_path: Path) -> None:
+    # httpx does not follow redirects by default, so a 3xx body is not JSON;
+    # treat it as an error rather than caching an unparseable redirect stub.
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(301, headers={"Location": "https://api.example/y"})
+
+    cache = ResponseCache(tmp_path / "c.sqlite3", ttl_days=30)
+    client = _client(httpx.MockTransport(handler), cache)
+    with pytest.raises(ExternalAPIError):
+        client.get_json("https://api.example/x", cache_key="k")
+    assert cache.get("openfigi", "k") is None  # redirect stub never cached
+    client.close()
+    cache.close()
+
+
 def test_rate_limiter_sleeps_remaining_interval(tmp_path: Path) -> None:
     # Monotonic returns a controlled, increasing sequence. Each request consumes
     # readings: _respect_rate_limit reads once when _last_call is set, then once

@@ -44,7 +44,10 @@ class SECEdgarClient:
             symbol: Ticker symbol (case-insensitive).
 
         Returns:
-            The 4-digit SIC string, or ``None`` when the symbol or SIC is absent.
+            The zero-padded 4-digit SIC string, or ``None`` when the symbol or
+            SIC is absent. EDGAR may return the SIC as a JSON number or string;
+            both are normalized to 4 digits so significant leading zeros (e.g.
+            ``"0100"``) survive for the longest-prefix SIC-to-GICS match.
         """
         cik = self._cik_for_symbol(symbol)
         if cik is None:
@@ -57,10 +60,10 @@ class SECEdgarClient:
         if not isinstance(payload, dict):
             return None
         sic = cast("dict[str, object]", payload).get("sic")
-        if isinstance(sic, str) and sic.isdigit():
-            return sic
         if isinstance(sic, int):
-            return str(sic)
+            return f"{sic:04d}"
+        if isinstance(sic, str) and sic.strip().isdigit():
+            return sic.strip().zfill(4)
         return None
 
     def _cik_for_symbol(self, symbol: str) -> int | None:

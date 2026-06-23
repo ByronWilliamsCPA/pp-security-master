@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from security_master.external.settings import ExternalAPISettings
@@ -28,3 +30,26 @@ def test_explicit_values_round_trip() -> None:
     )
     assert settings.openfigi_api_key == "k"
     assert "byron@example.com" in settings.sec_user_agent
+
+
+def test_rejects_non_https_url() -> None:
+    with pytest.raises(ValueError, match="https"):
+        ExternalAPISettings(_env_file=None, openfigi_base_url="http://insecure.example")
+
+
+def test_rejects_non_gitignored_cache_path() -> None:
+    with pytest.raises(ValueError, match="not gitignored"):
+        ExternalAPISettings(_env_file=None, cache_path=Path("schema_exports/cache.db"))
+
+
+def test_accepts_gitignored_cache_paths() -> None:
+    # Covered by the *.sqlite3 rule, and by a path under data/.
+    assert ExternalAPISettings(
+        _env_file=None, cache_path=Path("elsewhere/cache.sqlite3")
+    )
+    assert ExternalAPISettings(_env_file=None, cache_path=Path("data/cache/x.db"))
+
+
+def test_rejects_out_of_range_bounds() -> None:
+    with pytest.raises(ValueError, match="max_retries"):
+        ExternalAPISettings(_env_file=None, max_retries=99)

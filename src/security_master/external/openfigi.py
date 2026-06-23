@@ -39,9 +39,11 @@ class OpenFIGIRecord(BaseModel):
         """Return whether OpenFIGI classifies this as an equity instrument.
 
         Returns:
-            ``True`` when ``marketSector`` is ``"Equity"``.
+            ``True`` when ``marketSector`` is ``"Equity"`` (compared
+            case-insensitively so an upstream casing change does not silently
+            misclassify every equity as non-equity).
         """
-        return self.market_sector == _EQUITY_MARKET_SECTOR
+        return self.market_sector.strip().casefold() == _EQUITY_MARKET_SECTOR.casefold()
 
 
 class OpenFIGIClient:
