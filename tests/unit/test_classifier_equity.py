@@ -24,7 +24,9 @@ class _FigiStub:
         self._record = record
         self._raises = raises
 
-    def map_identifier(self, *, isin=None, symbol=None) -> OpenFIGIRecord | None:
+    def map_identifier(
+        self, *, isin: str | None = None, symbol: str | None = None
+    ) -> OpenFIGIRecord | None:
         if self._raises:
             raise ExternalAPIError(provider="openfigi", message="down")
         return self._record
@@ -62,6 +64,9 @@ def test_provider_sector_path_writes_provenance(sqlite_session: Session) -> None
     assert sec.classification_source == "provider-sector"
     assert sec.classification_confidence == Decimal("0.80")
     assert sec.classification_locked is False
+    assert sec.classified_by == "auto"
+    assert sec.classified_at is not None
+    assert sec.classified_at.tzinfo is None  # naive UTC per project convention
 
 
 def test_sic_fallback_path(sqlite_session: Session) -> None:
@@ -86,6 +91,7 @@ def test_locked_row_is_skipped(sqlite_session: Session) -> None:
     assert sec.classification_source is None
     assert sec.classification_confidence is None
     assert sec.classified_by is None
+    assert sec.classified_at is None
 
 
 def test_unresolved_when_no_sector_and_no_sic(sqlite_session: Session) -> None:
@@ -126,4 +132,13 @@ def test_edgar_outage_degrades_to_unresolved(sqlite_session: Session) -> None:
         edgar=_EdgarStub(None, raises=True),
     )
     assert result is None  # batch continues; ExternalAPIError did not propagate
+    assert sec.industries_gics_sectors_level1 is None
+
+
+def test_unresolved_when_no_identifier(sqlite_session: Session) -> None:
+    sec = _add(sqlite_session, sector="Technology")  # no isin, no symbol
+    result = classify_equity(
+        sqlite_session, sec, openfigi=_FigiStub(_EQUITY), edgar=_EdgarStub(None)
+    )
+    assert result is None
     assert sec.industries_gics_sectors_level1 is None

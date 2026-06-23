@@ -1,11 +1,11 @@
 """The ADR-003 classification chain: fund -> equity -> bond -> manual.
 
-Phase D3 implements ONLY the Tier-4 manual path (see ``manual.py``). Tier-3
-equity is now live (see ``equity.py``). The remaining automated tiers are
-explicit future-stubs, not silent gaps: each raises ``NotImplementedError``
-referencing ADR-005 (external-API sourcing, future). The orchestrator
-documents the intended order; until all automated tiers land, the working
-entry point for manual classification is ``manual.apply_manual_classification``.
+Tier-3 equity classification is implemented in ``equity.py``; the Tier-4 manual
+path lives in ``manual.py``. The remaining automated tiers are explicit
+future-stubs, not silent gaps: each raises ``NotImplementedError`` referencing
+ADR-005 (external-API sourcing, future). The orchestrator documents the
+intended order; until all automated tiers land, the working entry point for
+manual classification is ``manual.apply_manual_classification``.
 """
 
 from __future__ import annotations

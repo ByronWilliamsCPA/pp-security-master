@@ -37,6 +37,7 @@ _AUTO = "auto"
 class _OpenFIGI(Protocol):
     """Structural type for the OpenFIGI dependency (eases test stubbing)."""
 
+    # "= ..." is the Protocol default sentinel, not a runtime value.
     def map_identifier(
         self, *, isin: str | None = ..., symbol: str | None = ...
     ) -> OpenFIGIRecord | None: ...
