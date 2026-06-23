@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from security_master.extractor.ibkr_positions import IBKRPositionsImportService
 from security_master.storage.position_models import InteractiveBrokersOpenPosition
 
 if TYPE_CHECKING:
@@ -43,3 +44,24 @@ def test_open_position_round_trip(sqlite_session: Session) -> None:
     assert fetched.report_date == date(2026, 6, 19)
     assert fetched.isin == "US000000BMBC"
     assert fetched.side == "Long"
+
+
+_POS_DOC = """<?xml version="1.0"?>
+<FlexQueryResponse><FlexStatements><FlexStatement>
+  <OpenPositions>
+    <OpenPosition accountId="U1" conid="111" symbol="BMBCX" isin="US000000BMBC"
+        description="BMBCX FUND" position="2520.119" currency="USD"
+        side="Long" reportDate="20260619"/>
+  </OpenPositions>
+</FlexStatement></FlexStatements></FlexQueryResponse>
+"""
+
+
+def test_persist_is_idempotent_on_account_date_conid(sqlite_session: Session) -> None:
+    service = IBKRPositionsImportService(sqlite_session)
+    first = service.import_from_string(_POS_DOC)
+    second = service.import_from_string(_POS_DOC)
+    assert first.positions == 1
+    assert second.positions == 0
+    assert second.skipped == 1
+    assert sqlite_session.query(InteractiveBrokersOpenPosition).count() == 1
