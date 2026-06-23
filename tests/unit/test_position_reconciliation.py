@@ -153,3 +153,69 @@ def test_reconstructed_only_nonzero_is_flagged(sqlite_session: Session) -> None:
     assert rows["US000000EEEE"].reconstructed_qty == Decimal(7)
     assert rows["US000000EEEE"].reported_qty is None
     assert rows["US000000EEEE"].status == "RECONSTRUCTED_ONLY"
+
+
+def test_multi_record_type_aggregation_nets(sqlite_session: Session) -> None:
+    """TRADE + TRANSFER + CORP_ACTION for one key sum correctly."""
+    sqlite_session.add(_txn("TRADE", "US000000FFFF", "100", date(2023, 1, 2)))
+    sqlite_session.add(
+        _txn("TRANSFER", "US000000FFFF", "50", date(2023, 2, 2), ttype="ACATS")
+    )
+    sqlite_session.add(
+        _txn("CORP_ACTION", "US000000FFFF", "-30", date(2023, 3, 2), ttype="FS")
+    )
+    sqlite_session.add(_snapshot("US000000FFFF", "120", "777"))
+    sqlite_session.commit()
+
+    rows = _by_isin(reconcile_positions(sqlite_session, _ACCOUNT, _AS_OF))
+    assert rows["US000000FFFF"].reconstructed_qty == Decimal(120)
+    assert rows["US000000FFFF"].status == "MATCHED"
+
+
+def test_drift_at_tolerance_boundary_and_configurable_tolerance(
+    sqlite_session: Session,
+) -> None:
+    """Drift exactly equal to tolerance is MATCHED; a tighter tolerance flags it."""
+    sqlite_session.add(_txn("TRADE", "US000000GGGG", "100.0000", date(2023, 1, 2)))
+    sqlite_session.add(_snapshot("US000000GGGG", "100.0001", "888"))
+    sqlite_session.commit()
+
+    # Default tolerance 0.0001: |drift| == 0.0001 -> MATCHED (uses <=).
+    rows = _by_isin(reconcile_positions(sqlite_session, _ACCOUNT, _AS_OF))
+    assert rows["US000000GGGG"].status == "MATCHED"
+
+    # Tighter tolerance -> the same drift is now DRIFT.
+    rows_tight = _by_isin(
+        reconcile_positions(
+            sqlite_session, _ACCOUNT, _AS_OF, tolerance=Decimal("0.00009")
+        )
+    )
+    assert rows_tight["US000000GGGG"].status == "DRIFT"
+
+
+def test_reported_only_drift_is_negative_reported(sqlite_session: Session) -> None:
+    """A snapshot with no share-moving rows is REPORTED_ONLY with drift = -reported."""
+    sqlite_session.add(_snapshot("US000000HHHH", "42", "999"))
+    sqlite_session.commit()
+
+    row = _by_isin(reconcile_positions(sqlite_session, _ACCOUNT, _AS_OF))[
+        "US000000HHHH"
+    ]
+    assert row.status == "REPORTED_ONLY"
+    assert row.reconstructed_qty == Decimal(0)
+    assert row.drift == Decimal(-42)
+
+
+def test_isin_grouping_ignores_conid_presence(sqlite_session: Session) -> None:
+    """Real IBKR shape: trade keyed by isin nets with a corp action carrying isin AND conid."""
+    sqlite_session.add(_txn("TRADE", "US000000DBJA", "4156", date(2023, 1, 2)))
+    corp = _txn("CORP_ACTION", "US000000DBJA", "-4156", date(2024, 1, 10), ttype="TC")
+    corp.conid = "463451348"
+    sqlite_session.add(corp)
+    sqlite_session.commit()
+
+    row = _by_isin(reconcile_positions(sqlite_session, _ACCOUNT, _AS_OF))[
+        "US000000DBJA"
+    ]
+    assert row.reconstructed_qty == Decimal(0)
+    assert row.status == "MATCHED"
