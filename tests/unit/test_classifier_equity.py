@@ -142,3 +142,20 @@ def test_unresolved_when_no_identifier(sqlite_session: Session) -> None:
     )
     assert result is None
     assert sec.industries_gics_sectors_level1 is None
+
+
+def test_unknown_gics_code_degrades_to_unresolved(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Safety net against future crosswalk drift: if a resolver yields a code the
+    # GICS taxonomy does not know, classify_equity must degrade to None, not crash.
+    monkeypatch.setattr(
+        "security_master.classifier.equity.resolve_gics_from_provider",
+        lambda _sector: "99",
+    )
+    sec = _add(sqlite_session, isin="US0378331005", symbol="AAPL", sector="Technology")
+    result = classify_equity(
+        sqlite_session, sec, openfigi=_FigiStub(_EQUITY), edgar=_EdgarStub(None)
+    )
+    assert result is None
+    assert sec.industries_gics_sectors_level1 is None
