@@ -80,6 +80,12 @@ def reconstruct_net_positions(
     )
     agg: dict[str, _ReconAgg] = {}
     for row in rows:
+        # #EDGE (data integrity): COALESCE(isin, conid) splits one security into
+        # two keys if some share-moving rows carry ISIN and others carry only
+        # conid. Real IBKR rows for a security share the same ISIN, so they net
+        # correctly; a mixed-key history is the unhandled edge.
+        # #VERIFY: test_isin_grouping_ignores_conid_presence pins the real shape
+        # (a TRADE with ISIN nets a CORP_ACTION that also carries ISIN + conid).
         key = row.isin or row.conid
         if key is None:
             continue

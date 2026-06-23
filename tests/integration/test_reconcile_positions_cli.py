@@ -70,3 +70,37 @@ def test_reconcile_positions_reports_dbja_matched_and_bmbcx_drift(
     assert "MATCHED" in dbja_line
     bmbc_line = next(line for line in lines if "US000000BMBC" in line)
     assert "DRIFT" in bmbc_line
+
+
+def test_reconcile_positions_still_reports_on_reimport(tmp_path: Path) -> None:
+    """A second reconcile of an already-imported snapshot still prints the report.
+
+    Scopes are derived from the file's content, not the (idempotency-emptied)
+    import batch, so the diagnostic is not silent on re-run.
+    """
+    db = tmp_path / "sp2.db"
+    url = f"sqlite:///{db}"
+    trades = tmp_path / "trades.xml"
+    trades.write_text(_TRADES, encoding="utf-8")
+    positions = tmp_path / "positions.xml"
+    positions.write_text(_POSITIONS, encoding="utf-8")
+
+    runner = CliRunner()
+    seed = runner.invoke(
+        app, ["import-broker", str(trades), "--database-url", url, "--create-schema"]
+    )
+    assert seed.exit_code == 0, seed.output
+
+    first = runner.invoke(
+        app, ["reconcile-positions", str(positions), "--database-url", url]
+    )
+    assert first.exit_code == 0, first.output
+
+    second = runner.invoke(
+        app, ["reconcile-positions", str(positions), "--database-url", url]
+    )
+    assert second.exit_code == 0, second.output
+    assert "skipped 1 existing" in second.output
+    lines = second.output.splitlines()
+    bmbc_line = next(line for line in lines if "US000000BMBC" in line)
+    assert "DRIFT" in bmbc_line

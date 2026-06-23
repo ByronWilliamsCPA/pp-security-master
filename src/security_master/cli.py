@@ -16,6 +16,7 @@ Database connection details are read from the environment (see
 from __future__ import annotations
 
 from decimal import Decimal
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
@@ -33,7 +34,11 @@ from security_master.classifier.taxonomy_lookup import (
     resolve_brx_plus_sleeve,
     resolve_gics_sector,
 )
-from security_master.extractor import IBKRFlexImportService, IBKRPositionsImportService
+from security_master.extractor import (
+    IBKRFlexImportService,
+    IBKRPositionsImportService,
+    parse_ibkr_open_positions,
+)
 from security_master.patch.pp_xml_export import PPXMLExportService
 from security_master.patch.pp_xml_import import PPXMLImportService
 from security_master.storage.database import (
@@ -42,7 +47,6 @@ from security_master.storage.database import (
     get_session_factory,
 )
 from security_master.storage.models import SecurityMaster
-from security_master.storage.position_models import InteractiveBrokersOpenPosition
 from security_master.storage.position_reconciliation import (
     DEFAULT_TOLERANCE,
     reconcile_positions,
@@ -431,15 +435,13 @@ def reconcile_positions_cmd(
     session = get_session_factory(engine)()
     try:
         summary = IBKRPositionsImportService(session).import_from_file(file)
-        scopes = sorted(
-            {
-                (row.account_number, row.report_date)
-                for row in session.query(InteractiveBrokersOpenPosition).filter(
-                    InteractiveBrokersOpenPosition.import_batch_id
-                    == summary.import_batch_id
-                )
-            }
-        )
+        # Derive scopes from the file's own content, not the import batch: a
+        # re-import skips every row (idempotent), so a batch-scoped query would be
+        # empty and the reconciliation report would silently print nothing on a
+        # second run. The snapshot is persisted regardless; reconciliation reads
+        # the full table for each (account, report_date) the file names.
+        records = parse_ibkr_open_positions(Path(file).read_text(encoding="utf-8"))
+        scopes = sorted({(r.account_number, r.report_date) for r in records})
         click.echo(
             f"Imported {summary.positions} snapshot row(s) "
             f"(skipped {summary.skipped} existing) as batch {summary.import_batch_id}."
