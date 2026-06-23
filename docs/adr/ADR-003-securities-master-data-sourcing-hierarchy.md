@@ -1,7 +1,7 @@
 # ADR-003: Securities Master Data Sourcing Hierarchy
 
 **Date**: 2025-08-22  
-**Status**: Partially Accepted (Tier 4 manual classification implemented in Phase D3 / PR #114, 2026-06-21; Tiers 1-3 automated sourcing deferred pending ADR-005)  
+**Status**: Partially Accepted (Tier 4 manual classification in Phase D3 / PR #114, 2026-06-21; Tier 3 listed-equity classification implemented 2026-06-23 via the ADR-005 framework; Tiers 1-2 automated sourcing still pending)  
 **Deciders**: Byron, Development Team  
 **Consulted**: Portfolio Performance API Documentation, pp-portfolio-classifier Analysis  
 **Informed**: Data Quality Team, Classification Engine Team  
@@ -88,6 +88,11 @@ We will implement a **four-tier hierarchical data sourcing strategy** for securi
 - **Cost Model**: Free tier with rate limits, paid tiers for higher volume
 - **Data Quality**: Bloomberg-maintained, institutional-grade reference data
 - **Classification**: GICS sectors, industry groups, security types
+
+Note: OpenFIGI responses do not include a GICS sector field. Tier-3 equity
+classification therefore sources GICS sector from the security's provider sector
+via `resolve_gics_from_provider`, or as a free fallback from a SEC EDGAR SIC code
+via `resolve_gics_from_sic_naics`.
 
 #### **3.2 Alpha Vantage API Integration**
 
