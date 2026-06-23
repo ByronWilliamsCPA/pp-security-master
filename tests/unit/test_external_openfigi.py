@@ -118,3 +118,38 @@ def test_requires_an_identifier(tmp_path: Path) -> None:
     finally:
         base.close()
         cache.close()
+
+
+def test_maps_ticker_when_isin_not_provided(tmp_path: Path) -> None:
+    import json as _json
+
+    captured: list[object] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.append(_json.loads(request.content))
+        return httpx.Response(
+            200,
+            json=[
+                {
+                    "data": [
+                        {
+                            "figi": "BBG",
+                            "name": "APPLE INC",
+                            "securityType": "Common Stock",
+                            "marketSector": "Equity",
+                        }
+                    ]
+                }
+            ],
+        )
+
+    client, base, cache = _make(httpx.MockTransport(handler), tmp_path)
+    try:
+        rec = client.map_identifier(symbol="AAPL")
+        assert rec is not None
+        assert rec.figi == "BBG"
+        assert len(captured) == 1
+        assert captured[0] == [{"idType": "TICKER", "idValue": "AAPL"}]
+    finally:
+        base.close()
+        cache.close()
