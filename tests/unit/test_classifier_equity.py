@@ -31,10 +31,13 @@ class _FigiStub:
 
 
 class _EdgarStub:
-    def __init__(self, sic: str | None) -> None:
+    def __init__(self, sic: str | None, *, raises: bool = False) -> None:
         self._sic = sic
+        self._raises = raises
 
     def sic_for_symbol(self, symbol: str) -> str | None:
+        if self._raises:
+            raise ExternalAPIError(provider="sec_edgar", message="down")
         return self._sic
 
 
@@ -79,6 +82,10 @@ def test_locked_row_is_skipped(sqlite_session: Session) -> None:
     )
     assert result is None
     assert sec.industries_gics_sectors_level1 is None
+    assert sec.classification_tier is None
+    assert sec.classification_source is None
+    assert sec.classification_confidence is None
+    assert sec.classified_by is None
 
 
 def test_unresolved_when_no_sector_and_no_sic(sqlite_session: Session) -> None:
@@ -107,3 +114,16 @@ def test_api_outage_degrades_to_unresolved(sqlite_session: Session) -> None:
         edgar=_EdgarStub(None),
     )
     assert result is None
+
+
+def test_edgar_outage_degrades_to_unresolved(sqlite_session: Session) -> None:
+    # No provider sector, so it falls to the EDGAR SIC path, which errors.
+    sec = _add(sqlite_session, isin="US0378331005", symbol="AAPL")
+    result = classify_equity(
+        sqlite_session,
+        sec,
+        openfigi=_FigiStub(_EQUITY),
+        edgar=_EdgarStub(None, raises=True),
+    )
+    assert result is None  # batch continues; ExternalAPIError did not propagate
+    assert sec.industries_gics_sectors_level1 is None
