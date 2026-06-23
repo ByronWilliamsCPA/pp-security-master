@@ -169,7 +169,10 @@ def import_broker(
         session.close()
 
     click.echo(
-        f"Imported {summary.trades} trade(s) "
+        f"Imported {summary.trades} trade(s), "
+        f"{summary.cash_transactions} cash transaction(s), "
+        f"{summary.corporate_actions} corporate action(s), "
+        f"{summary.transfers} transfer(s) "
         f"(skipped {summary.skipped} existing) "
         f"from {file} as batch {summary.import_batch_id}."
     )

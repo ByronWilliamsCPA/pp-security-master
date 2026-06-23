@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FlexQueryResponse queryName="Sample" type="AF">
+  <FlexStatements count="1">
+    <FlexStatement accountId="U0000000" fromDate="01/01/2024" toDate="12/31/2024">
+      <Trades>
+        <Trade tradeDate="03/01/2024" buySell="BUY" proceeds="-1000.00"
+               currency="USD" description="SAMPLE EQUITY ETF" symbol="SMPL"
+               isin="US0000000001" tradeID="9000000001" transactionID="8000000001"
+               quantity="100" tradePrice="10.00" ibCommission="-1.00"/>
+      </Trades>
+      <CashTransactions>
+        <CashTransaction transactionID="8000000010" actionID="700000010"
+               type="Dividends" dividendType="Ordinary Dividend"
+               amount="25.50" currency="USD" symbol="SMPL" isin="US0000000001"
+               cusip="000000001" conid="111111" figi="BBG000000001"
+               assetCategory="STK" subCategory="ETF"
+               description="SMPL CASH DIVIDEND USD 0.25 PER SHARE"
+               exDate="05/20/2024" settleDate="06/01/2024" reportDate="06/01/2024"
+               accountId="U0000000"/>
+      </CashTransactions>
+      <CorporateActions>
+        <CorporateAction transactionID="8000000020" actionID="700000020"
+               type="TC" amount="-122532.667322" proceeds="122532.667322"
+               fifoPnlRealized="2535.167322" quantity="-4156" currency="USD"
+               symbol="MRGR" isin="US0000000099" cusip="000000099"
+               conid="222222" figi="BBG000000099" assetCategory="STK" subCategory="ETF"
+               actionDescription="MRGR(US0000000099) MERGED(Acquisition) FOR USD 29.48 PER SHARE"
+               description="MRGR(US0000000099) MERGED(Acquisition) FOR USD 29.48 PER SHARE"
+               dateTime="01/09/2024;202500" reportDate="01/10/2024"
+               accountId="U0000000"/>
+      </CorporateActions>
+      <Transfers>
+        <Transfer transactionID="8000000030" type="ACATS" direction="IN"
+               cashTransfer="675000" quantity="0" currency="USD"
+               symbol="--" description="--" assetCategory="CASH"
+               date="10/13/2024" settleDate="10/16/2024" reportDate="10/16/2024"
+               accountId="U0000000"/>
+      </Transfers>
+    </FlexStatement>
+  </FlexStatements>
+</FlexQueryResponse>

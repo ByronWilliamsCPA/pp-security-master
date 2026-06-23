@@ -109,3 +109,42 @@ def test_parse_rejects_trade_without_trade_date() -> None:
     doc = "<FlexQueryResponse><Trade buySell='BUY' proceeds='1' currency='USD'/></FlexQueryResponse>"
     with pytest.raises(ValueError, match="tradeDate"):
         parse_ibkr_flex(doc)
+
+
+@pytest.mark.unit
+def test_persists_non_trade_records(sqlite_session: Session) -> None:
+    """All four record types are persisted on first import and skipped on re-import."""
+    from pathlib import Path
+
+    from security_master.extractor.ibkr_flex import IBKRFlexImportService
+
+    sample = (
+        Path(__file__).resolve().parents[2]
+        / "sample_data"
+        / "IBKR_Flex_Records_sample.xml"
+    )
+    service = IBKRFlexImportService(sqlite_session)
+    summary = service.import_from_string(sample.read_text(encoding="utf-8"))
+    assert summary.trades == 1
+    assert summary.cash_transactions == 1
+    assert summary.corporate_actions == 1
+    assert summary.transfers == 1
+
+    # Acceptance criterion 2: the record_type discriminator lands per row, and
+    # the transfer's "--" symbol/isin normalize to NULL on persist.
+    rows = {
+        row.record_type: row
+        for row in sqlite_session.query(InteractiveBrokersTransaction).all()
+    }
+    assert set(rows) == {"TRADE", "CASH", "CORP_ACTION", "TRANSFER"}
+    assert rows["TRANSFER"].symbol is None
+    assert rows["TRANSFER"].isin is None
+
+    again = service.import_from_string(sample.read_text(encoding="utf-8"))
+    assert (
+        again.trades,
+        again.cash_transactions,
+        again.corporate_actions,
+        again.transfers,
+    ) == (0, 0, 0, 0)
+    assert again.skipped == 4
