@@ -34,7 +34,12 @@ def upgrade() -> None:
     op.create_index(op.f(f"ix_{_TABLE}_record_type"), _TABLE, ["record_type"])
     op.create_index(op.f(f"ix_{_TABLE}_action_id"), _TABLE, ["action_id"])
     op.create_index(op.f(f"ix_{_TABLE}_figi"), _TABLE, ["figi"])
-    # Existing rows are trades; server_default already backfilled record_type.
+    # #ASSUME (data integrity): every pre-existing row in this table is a trade,
+    # so the server_default backfills record_type="TRADE" correctly for all of them.
+    # This holds because non-trade ingest does not exist before this migration.
+    # #VERIFY: before relying on the backfill in production, confirm the pre-migration
+    # table contains only trade rows (e.g. SELECT DISTINCT record_type after upgrade,
+    # or check that every row has a non-null trade_id).
     # Drop the server_default so future inserts rely on the ORM default.
     op.alter_column(_TABLE, "record_type", server_default=None)
 

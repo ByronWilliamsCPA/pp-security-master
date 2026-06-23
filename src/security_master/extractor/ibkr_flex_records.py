@@ -145,6 +145,13 @@ def cash_from_element(elem: ET.Element) -> ParsedCashTransaction:
     if txn_date is None:
         msg = "IBKR CashTransaction is missing settleDate and reportDate"
         raise ValueError(msg)
+    # #ASSUME (financial / data integrity): well-formed Flex CashTransaction rows
+    # always carry amount and currency, so the lenient fallbacks below
+    # (amount -> Decimal(0), currency -> "USD") are never exercised in practice;
+    # they exist only to satisfy the NOT NULL amount column. A malformed record
+    # missing these persists fabricated economics rather than failing loudly.
+    # #VERIFY: if broker exports are found to omit amount/currency on cash rows,
+    # replace the fallbacks with the _require pattern used above for transactionID.
     return ParsedCashTransaction(
         transaction_date=txn_date,
         settlement_date=settle,
@@ -183,6 +190,12 @@ def corp_action_from_element(elem: ET.Element) -> ParsedCorporateAction:
     # there, amount is the PP-compatible cents view.
     # #VERIFY: if exact corporate-action cash effects are needed downstream, read
     # proceeds/realized_pnl, not amount, or widen amount and add a migration.
+    # #ASSUME (financial / data integrity): a corporate action may legitimately carry
+    # no cash effect (e.g. a stock split), so amount/currency are NOT required; the
+    # fallbacks (amount -> Decimal(0), currency -> "USD") satisfy the NOT NULL amount
+    # column for those cashless rows. The lossless economics live in proceeds.
+    # #VERIFY: a non-USD corporate action that omits currency would be mislabeled USD;
+    # if that case is observed, source currency from proceeds context or _require it.
     return ParsedCorporateAction(
         transaction_date=_require_date(
             a.get("reportDate"), "reportDate", "CorporateAction"
@@ -220,6 +233,12 @@ def transfer_from_element(elem: ET.Element) -> ParsedTransfer:
         raise ValueError(msg)
     txn_type = _require(a.get("type"), "type", "Transfer")
     name = dash_to_none(a.get("description")) or txn_type
+    # #ASSUME (financial / data integrity): a position-only transfer (ACATS share
+    # move) may carry no cashTransfer amount, so amount/currency are NOT required;
+    # the fallbacks (amount -> Decimal(0), currency -> "USD") satisfy the NOT NULL
+    # amount column for those cashless rows.
+    # #VERIFY: if a cash transfer is found to omit currency, it would be mislabeled
+    # USD; replace the currency fallback with _require in that case.
     return ParsedTransfer(
         transaction_date=txn_date,
         settlement_date=settle,
