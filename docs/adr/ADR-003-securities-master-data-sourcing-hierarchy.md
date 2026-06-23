@@ -1,7 +1,7 @@
 # ADR-003: Securities Master Data Sourcing Hierarchy
 
 **Date**: 2025-08-22  
-**Status**: Deferred (accepted in principle; not yet implemented as of 2026-06-19)  
+**Status**: Partially Accepted (Tier 4 manual classification implemented in Phase D3 / PR #114, 2026-06-21; Tiers 1-3 automated sourcing deferred pending ADR-005)  
 **Deciders**: Byron, Development Team  
 **Consulted**: Portfolio Performance API Documentation, pp-portfolio-classifier Analysis  
 **Informed**: Data Quality Team, Classification Engine Team  
