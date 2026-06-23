@@ -35,8 +35,29 @@ def test_parse_flex_date(raw: str | None, expected: date | None) -> None:
 @pytest.mark.unit
 @pytest.mark.extractor
 def test_parse_flex_date_rejects_unknown() -> None:
-    with pytest.raises(ValueError, match="Unrecognized IBKR Flex date"):
+    with pytest.raises(ValueError, match="Unrecognized or invalid IBKR Flex date"):
         parse_flex_date("31.10.2023")
+
+
+@pytest.mark.unit
+@pytest.mark.extractor
+def test_parse_flex_date_rejects_well_formed_but_invalid() -> None:
+    """A value matching a known format but holding an impossible calendar date raises."""
+    with pytest.raises(ValueError, match="Unrecognized or invalid IBKR Flex date"):
+        parse_flex_date("02/31/2024")
+
+
+@pytest.mark.unit
+@pytest.mark.extractor
+def test_parse_decimal_rejects_malformed() -> None:
+    """A present-but-non-numeric value raises ValueError, not decimal.InvalidOperation.
+
+    Callers guard the empty/format paths with ValueError; re-raising keeps a
+    malformed number from propagating an opaque InvalidOperation that aborts a
+    whole-document import.
+    """
+    with pytest.raises(ValueError, match="Unparseable IBKR Flex decimal"):
+        parse_decimal("N/A")
 
 
 @pytest.mark.unit

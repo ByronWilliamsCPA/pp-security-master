@@ -12,7 +12,7 @@ import them by name without going through ``ibkr_flex``.
 from __future__ import annotations
 
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -75,11 +75,22 @@ def parse_decimal(value: str | None) -> Decimal | None:
 
     Returns:
         A :class:`decimal.Decimal`, or None when the input is empty or absent.
+
+    Raises:
+        ValueError: When a non-empty value is not a valid decimal. The raw
+            value is included so the offending attribute is identifiable;
+            ``decimal.InvalidOperation`` is re-raised as ``ValueError`` so
+            callers that already guard the empty/format paths with ``ValueError``
+            also catch malformed numbers instead of seeing an opaque abort.
     """
     cleaned = none_if_empty(value)
     if cleaned is None:
         return None
-    return Decimal(cleaned)
+    try:
+        return Decimal(cleaned)
+    except InvalidOperation as exc:
+        msg = f"Unparseable IBKR Flex decimal value: {value!r}"
+        raise ValueError(msg) from exc
 
 
 # Backward-compatible alias.
@@ -111,5 +122,7 @@ def parse_flex_date(value: str | None) -> date | None:
             return datetime.strptime(datepart, fmt).date()  # noqa: DTZ007
         except ValueError:
             continue
-    msg = f"Unrecognized IBKR Flex date format: {value!r}"
+    # Reaching here means no format matched OR a matched format held an invalid
+    # calendar value (e.g. 02/31/2024), both surface as strptime ValueErrors.
+    msg = f"Unrecognized or invalid IBKR Flex date: {value!r}"
     raise ValueError(msg)
