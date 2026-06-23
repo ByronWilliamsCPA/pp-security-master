@@ -125,3 +125,59 @@ def test_transfer_missing_dates_raises() -> None:
     )
     with pytest.raises(ValueError, match="missing date and settleDate"):
         parse_ibkr_flex_records(xml)
+
+
+@pytest.mark.unit
+@pytest.mark.extractor
+def test_cash_absent_amount_currency_defaults() -> None:
+    """An amount/currency-less cash row exercises the documented #ASSUME defaults.
+
+    Guards the RAD-documented fallbacks (amount -> Decimal(0), currency -> "USD")
+    that short-circuit ``or`` evaluation otherwise leaves untested.
+    """
+    xml = _wrap(
+        '<CashTransactions><CashTransaction transactionID="9" '
+        'settleDate="06/01/2024" type="Fee"/></CashTransactions>'
+    )
+    cash = parse_ibkr_flex_records(xml).cash_transactions[0]
+    assert cash.amount == Decimal(0)
+    assert cash.currency == "USD"
+
+
+@pytest.mark.unit
+@pytest.mark.extractor
+def test_cash_report_date_only_fallback() -> None:
+    """settleDate absent, reportDate present: reportDate drives transaction_date."""
+    xml = _wrap(
+        '<CashTransactions><CashTransaction transactionID="11" '
+        'reportDate="06/02/2024" type="Interest" amount="3.00"/></CashTransactions>'
+    )
+    cash = parse_ibkr_flex_records(xml).cash_transactions[0]
+    assert cash.transaction_date == date(2024, 6, 2)
+    assert cash.settlement_date is None
+
+
+@pytest.mark.unit
+@pytest.mark.extractor
+def test_transfer_absent_amount_currency_defaults() -> None:
+    """A cashTransfer/currency-less transfer exercises the documented defaults."""
+    xml = _wrap(
+        '<Transfers><Transfer transactionID="10" settleDate="10/14/2024" '
+        'type="ACATS" direction="IN"/></Transfers>'
+    )
+    tr = parse_ibkr_flex_records(xml).transfers[0]
+    assert tr.amount == Decimal(0)
+    assert tr.currency == "USD"
+
+
+@pytest.mark.unit
+@pytest.mark.extractor
+def test_transfer_settle_date_only_fallback() -> None:
+    """date absent, settleDate present: settleDate drives transaction_date."""
+    xml = _wrap(
+        '<Transfers><Transfer transactionID="12" settleDate="10/14/2024" '
+        'type="ACATS" direction="IN"/></Transfers>'
+    )
+    tr = parse_ibkr_flex_records(xml).transfers[0]
+    assert tr.transaction_date == date(2024, 10, 14)
+    assert tr.settlement_date == date(2024, 10, 14)
