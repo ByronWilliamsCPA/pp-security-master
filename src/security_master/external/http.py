@@ -54,6 +54,7 @@ class ExternalHTTPClient:
         Args:
             provider: Provider label (cache namespace + error attribution).
             http: An ``httpx.Client`` (inject a MockTransport-backed one in tests).
+                The caller owns its lifecycle; close via ``ExternalHTTPClient.close()``.
             cache: Response cache.
             min_interval_seconds: Minimum spacing between live calls.
             max_retries: Retry attempts on 429/5xx/transport errors.
@@ -68,6 +69,10 @@ class ExternalHTTPClient:
         self._sleep = sleep
         self._monotonic = monotonic
         self._last_call: float | None = None
+
+    def close(self) -> None:
+        """Close the underlying httpx.Client. Callers own the client lifecycle."""
+        self._http.close()
 
     def get_json(
         self,
@@ -89,7 +94,10 @@ class ExternalHTTPClient:
 
         Returns:
             The decoded JSON (object). Treat as untrusted data.
-        """
+
+        Raises:
+            json.JSONDecodeError: If the response body is not valid JSON.
+        """  # DOC NOQA: DOC502
         cached = self._cache.get(self._provider, cache_key)
         if cached is not None:
             return cast("object", json.loads(cached))
@@ -117,6 +125,8 @@ class ExternalHTTPClient:
 
         Raises:
             ExternalAPIError: On exhausted retries or a non-retryable HTTP error.
+            RuntimeError: If the retry loop exits without setting the body
+                (an invariant violation that should never occur in practice).
         """
         body: str | None = None
         try:
@@ -135,7 +145,9 @@ class ExternalHTTPClient:
             msg = f"exhausted retries: {exc}"
             raise ExternalAPIError(provider=self._provider, message=msg) from exc
         # body is always set when the loop exits without exception.
-        assert body is not None
+        if body is None:  # pragma: no cover -- invariant: loop never exits unset
+            msg = "internal: response body unset after retry loop"
+            raise RuntimeError(msg)
         return body
 
     def _single_attempt(
