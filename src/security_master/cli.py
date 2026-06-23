@@ -15,6 +15,7 @@ Database connection details are read from the environment (see
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 import click
@@ -32,7 +33,7 @@ from security_master.classifier.taxonomy_lookup import (
     resolve_brx_plus_sleeve,
     resolve_gics_sector,
 )
-from security_master.extractor import IBKRFlexImportService
+from security_master.extractor import IBKRFlexImportService, IBKRPositionsImportService
 from security_master.patch.pp_xml_export import PPXMLExportService
 from security_master.patch.pp_xml_import import PPXMLImportService
 from security_master.storage.database import (
@@ -41,6 +42,11 @@ from security_master.storage.database import (
     get_session_factory,
 )
 from security_master.storage.models import SecurityMaster
+from security_master.storage.position_models import InteractiveBrokersOpenPosition
+from security_master.storage.position_reconciliation import (
+    DEFAULT_TOLERANCE,
+    reconcile_positions,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -384,6 +390,81 @@ def classify_crypto_seed(classified_by: str, *, force: bool) -> None:
 
 
 app.add_command(classify)
+
+
+@app.command("reconcile-positions")
+@click.argument("file", type=click.Path(exists=True, dir_okay=False))
+@click.option(
+    "--database-url",
+    default=None,
+    help="Override database URL. Defaults to DB_* environment variables.",
+)
+@click.option(
+    "--create-schema/--no-create-schema",
+    default=False,
+    show_default=True,
+    help="Create tables before reconciling (useful for a fresh database).",
+)
+@click.option(
+    "--tolerance",
+    default=str(DEFAULT_TOLERANCE),
+    show_default=True,
+    help="Absolute share tolerance for the MATCHED band.",
+)
+def reconcile_positions_cmd(
+    file: str,
+    database_url: str | None,
+    create_schema: bool,
+    tolerance: str,
+) -> None:
+    """Reconcile reconstructed Layer-1 positions against an IBKR snapshot FILE.
+
+    FILE is an IBKR positions Flex Query XML (the <OpenPosition> snapshot). The
+    snapshot is persisted idempotently, then each (account, report_date) it
+    contains is reconstructed from Layer-1 share-moving transactions and compared.
+    """
+    tol = Decimal(tolerance)
+    engine = create_db_engine(database_url)
+    if create_schema:
+        create_tables(engine)
+
+    session = get_session_factory(engine)()
+    try:
+        summary = IBKRPositionsImportService(session).import_from_file(file)
+        scopes = sorted(
+            {
+                (row.account_number, row.report_date)
+                for row in session.query(InteractiveBrokersOpenPosition).filter(
+                    InteractiveBrokersOpenPosition.import_batch_id
+                    == summary.import_batch_id
+                )
+            }
+        )
+        click.echo(
+            f"Imported {summary.positions} snapshot row(s) "
+            f"(skipped {summary.skipped} existing) as batch {summary.import_batch_id}."
+        )
+        for account, report_date in scopes:
+            rows = reconcile_positions(session, account, report_date, tol)
+            click.echo(f"\nAccount {account} as of {report_date}:")
+            click.echo(
+                f"  {'IDENTIFIER':<16}{'SYMBOL':<10}{'RECONSTRUCTED':>16}"
+                f"{'REPORTED':>16}{'DRIFT':>14}  STATUS"
+            )
+            counts: dict[str, int] = {}
+            for r in rows:
+                ident = r.isin or r.conid or "?"
+                sym = r.symbol or "-"
+                reported = "-" if r.reported_qty is None else f"{r.reported_qty}"
+                click.echo(
+                    f"  {ident:<16}{sym:<10}{r.reconstructed_qty!s:>16}"
+                    f"{reported:>16}{r.drift!s:>14}  {r.status}"
+                )
+                counts[r.status] = counts.get(r.status, 0) + 1
+            summary_line = ", ".join(f"{k}={v}" for k, v in sorted(counts.items()))
+            click.echo(f"  Summary: {summary_line}")
+    finally:
+        session.close()
 
 
 if __name__ == "__main__":
