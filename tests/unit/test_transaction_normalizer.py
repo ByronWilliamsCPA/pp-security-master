@@ -302,3 +302,78 @@ def test_normalize_all_flags_unresolved_and_unmapped(sqlite_session) -> None:
     assert "unmapped-account" in (row.validation_notes or "")
     assert summary.normalized == 1
     assert summary.flagged == 1
+
+
+def _layer2_net_shares(rows) -> Decimal:
+    """Mirror the holdings-view CASE: +qty for inflow types, -qty for outflow."""
+    from security_master.storage.transaction_normalizer import _INFLOW, _OUTFLOW
+
+    total = Decimal(0)
+    for r in rows:
+        if r.quantity is None:
+            continue
+        if r.transaction_type in _INFLOW:
+            total += r.quantity
+        elif r.transaction_type in _OUTFLOW:
+            total -= r.quantity
+    return total
+
+
+def test_reconciliation_invariant_matches_sp2(sqlite_session) -> None:
+    """Net shares from Layer-2 (view CASE) == SP2 _SHARE_MOVING sum from Layer-1.
+
+    Anchors: DBJA merger nets to 0; a dividend injects no shares.
+    """
+    from security_master.storage.position_reconciliation import (
+        reconstruct_net_positions,
+    )
+    from security_master.storage.transaction_models import ConsolidatedTransaction
+    from security_master.storage.transaction_normalizer import TransactionNormalizer
+
+    isin = "US000DBJA001"
+    sqlite_session.add(
+        _l1(
+            "TRADE",
+            isin=isin,
+            symbol="DBJA",
+            transaction_type="BUY",
+            quantity=Decimal(4156),
+        )
+    )
+    sqlite_session.add(
+        _l1(
+            "CORP_ACTION",
+            isin=isin,
+            symbol="DBJA",
+            transaction_type="TC",
+            action_description="cash merger",
+            quantity=Decimal(-4156),
+            proceeds=Decimal(41560),
+            amount=Decimal(41560),
+        )
+    )
+    sqlite_session.add(
+        _l1(
+            "CASH",
+            isin=isin,
+            symbol="DBJA",
+            transaction_type="Dividends",
+            quantity=None,
+            amount=Decimal(50),
+        )
+    )
+    sqlite_session.commit()
+
+    TransactionNormalizer(sqlite_session).normalize_all()
+
+    l2_rows = (
+        sqlite_session.query(ConsolidatedTransaction)
+        .filter(ConsolidatedTransaction.isin == isin)
+        .all()
+    )
+    # reconstruct_net_positions(session, account_number, as_of: date) returns
+    # dict[str, _ReconAgg] keyed by COALESCE(isin, conid); the value has a .qty.
+    l1_net = reconstruct_net_positions(sqlite_session, "U13052577", date(2024, 12, 31))
+    agg = l1_net.get(isin)
+    assert _layer2_net_shares(l2_rows) == Decimal(0)
+    assert (agg.qty if agg is not None else Decimal(0)) == Decimal(0)
