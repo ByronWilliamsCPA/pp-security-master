@@ -224,6 +224,7 @@ class IBKRPositionsImportService:
             return set()
         accounts = {k[0] for k in keys}
         dates = {k[1] for k in keys}
+        conids = {k[2] for k in keys}
         rows = (
             self.session.query(
                 InteractiveBrokersOpenPosition.account_number,
@@ -233,6 +234,7 @@ class IBKRPositionsImportService:
             .filter(
                 InteractiveBrokersOpenPosition.account_number.in_(accounts),
                 InteractiveBrokersOpenPosition.report_date.in_(dates),
+                InteractiveBrokersOpenPosition.conid.in_(conids),
             )
             .all()
         )
