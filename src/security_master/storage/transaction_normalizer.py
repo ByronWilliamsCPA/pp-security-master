@@ -19,18 +19,19 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 from security_master.storage.account_models import AccountMapping
 from security_master.storage.models import SecurityMaster
+from security_master.storage.transaction_models import (
+    ConsolidatedTransaction,
+    InteractiveBrokersTransaction,
+)
 
 if TYPE_CHECKING:
     from datetime import date
 
     from sqlalchemy.orm import Session
-
-    from security_master.storage.transaction_models import (
-        InteractiveBrokersTransaction,
-    )
 
 SOURCE_TABLE_IBKR = "transactions_interactive_brokers"
 SOURCE_INSTITUTION_IBKR = "ibkr"
@@ -271,3 +272,121 @@ def resolve_account(
             return row.pp_group, row.pp_account, True
         return UNMAPPED_GROUP, account_number, False
     return UNMAPPED_GROUP, UNKNOWN_ACCOUNT, False
+
+
+@dataclass
+class NormalizationSummary:
+    """Result of a normalization run.
+
+    Attributes:
+        batch_id: Identifier for this run.
+        normalized: Rows written or updated in transactions_consolidated.
+        skipped: Layer-1 rows deliberately not represented (by reason in skipped_by).
+        flagged: Written rows with has_validation_issues=True.
+        skipped_by: Count of skipped rows grouped by SkipReason.reason.
+    """
+
+    batch_id: str
+    normalized: int = 0
+    skipped: int = 0
+    flagged: int = 0
+    skipped_by: dict[str, int] = field(default_factory=dict)
+
+
+class TransactionNormalizer:
+    """Read IBKR Layer-1 rows and write/refresh Layer-2 consolidated rows."""
+
+    def __init__(self, session: Session) -> None:
+        """Store the SQLAlchemy session used for reads and persistence.
+
+        Args:
+            session: An active session bound to the target engine.
+        """
+        self.session = session
+
+    @staticmethod
+    def _new_batch_id() -> str:
+        return f"norm-{uuid4().hex[:12]}"
+
+    def normalize_all(self) -> NormalizationSummary:
+        """Normalize every IBKR Layer-1 row into Layer 2, idempotently.
+
+        Returns:
+            A :class:`NormalizationSummary` for the run. Re-running changes no row
+            counts; existing rows are refreshed in place (export flags preserved).
+        """
+        summary = NormalizationSummary(batch_id=self._new_batch_id())
+        existing = self._existing_by_source_id()
+        l1_rows = self.session.query(InteractiveBrokersTransaction).all()
+        for l1 in l1_rows:
+            mapped = normalize_ibkr_row(l1)
+            if isinstance(mapped, SkipReason):
+                summary.skipped += 1
+                summary.skipped_by[mapped.reason] = (
+                    summary.skipped_by.get(mapped.reason, 0) + 1
+                )
+                continue
+            self._upsert(l1, mapped, existing, summary)
+        self.session.commit()
+        return summary
+
+    def _existing_by_source_id(self) -> dict[int, ConsolidatedTransaction]:
+        rows = (
+            self.session.query(ConsolidatedTransaction)
+            .filter(ConsolidatedTransaction.source_table == SOURCE_TABLE_IBKR)
+            .all()
+        )
+        return {r.source_transaction_id: r for r in rows}
+
+    def _upsert(
+        self,
+        l1: InteractiveBrokersTransaction,
+        mapped: NormalizedRow,
+        existing: dict[int, ConsolidatedTransaction],
+        summary: NormalizationSummary,
+    ) -> None:
+        # #ASSUME (external resource): per-row resolve_security/resolve_account
+        # queries are acceptable at the expected scale (thousands of broker rows).
+        # Unlike the consolidated rows, securities/accounts are not pre-fetched.
+        # #VERIFY: revisit with a pre-fetch cache if a run exceeds ~100k rows.
+        security_id = resolve_security(self.session, mapped.isin, mapped.symbol)
+        pp_group, pp_account, mapped_account = resolve_account(
+            self.session, mapped.account_number
+        )
+        notes = list(mapped.notes)
+        if security_id is None:
+            notes.append("unresolved-security")
+        if not mapped_account:
+            notes.append("unmapped-account")
+        has_issues = security_id is None or not mapped_account
+        if has_issues:
+            summary.flagged += 1
+
+        target = existing.get(l1.id)
+        if target is None:
+            target = ConsolidatedTransaction(
+                source_institution=SOURCE_INSTITUTION_IBKR,
+                source_transaction_id=l1.id,
+                source_table=SOURCE_TABLE_IBKR,
+            )
+            self.session.add(target)
+            existing[l1.id] = target
+
+        target.transaction_date = mapped.transaction_date
+        target.settlement_date = mapped.settlement_date
+        target.security_master_id = security_id
+        target.security_name = mapped.security_name
+        target.isin = mapped.isin
+        target.symbol = mapped.symbol
+        target.pp_group = pp_group
+        target.pp_account = pp_account
+        target.transaction_type = mapped.transaction_type
+        target.quantity = mapped.quantity
+        target.price = mapped.price
+        target.gross_amount = mapped.gross_amount
+        target.fees_total = mapped.fees_total
+        target.net_amount = mapped.net_amount
+        target.currency = mapped.currency
+        target.has_validation_issues = has_issues
+        target.validation_notes = "; ".join(notes) if notes else None
+        summary.normalized += 1

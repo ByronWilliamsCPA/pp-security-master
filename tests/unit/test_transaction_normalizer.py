@@ -243,3 +243,62 @@ def test_resolve_account_mapped_and_unmapped(sqlite_session) -> None:
     assert resolve_account(sqlite_session, "U1") == ("Taxable", "IBKR", True)
     assert resolve_account(sqlite_session, "U9") == (UNMAPPED_GROUP, "U9", False)
     assert resolve_account(sqlite_session, None) == (UNMAPPED_GROUP, "UNKNOWN", False)
+
+
+def test_normalize_all_writes_resolved_and_flagged_rows(sqlite_session) -> None:
+    from security_master.storage.account_models import AccountMapping
+    from security_master.storage.models import SecurityMaster
+    from security_master.storage.transaction_models import ConsolidatedTransaction
+    from security_master.storage.transaction_normalizer import TransactionNormalizer
+
+    sqlite_session.add(SecurityMaster(name="Acme", isin="US0000000001", symbol="ACME"))
+    sqlite_session.add(
+        AccountMapping(
+            account_number="U13052577", pp_group="Taxable", pp_account="IBKR"
+        )
+    )
+    sqlite_session.add(_l1("TRADE", transaction_type="BUY", quantity=Decimal(10)))
+    sqlite_session.add(
+        _l1("CASH", transaction_type="Other Fees", quantity=None, amount=Decimal(-2))
+    )
+    sqlite_session.commit()
+
+    summary = TransactionNormalizer(sqlite_session).normalize_all()
+
+    rows = sqlite_session.query(ConsolidatedTransaction).all()
+    assert summary.normalized == 1
+    assert summary.skipped == 1
+    assert summary.flagged == 0
+    assert summary.skipped_by == {"fee_interest": 1}
+    assert len(rows) == 1
+    assert rows[0].transaction_type == "BUY"
+    assert rows[0].security_master_id is not None
+    assert rows[0].pp_group == "Taxable"
+    assert rows[0].has_validation_issues is False
+
+
+def test_normalize_all_flags_unresolved_and_unmapped(sqlite_session) -> None:
+    from security_master.storage.transaction_models import ConsolidatedTransaction
+    from security_master.storage.transaction_normalizer import TransactionNormalizer
+
+    sqlite_session.add(
+        _l1(
+            "TRADE",
+            transaction_type="BUY",
+            isin=None,
+            symbol="GHOST",
+            quantity=Decimal(3),
+        )
+    )
+    sqlite_session.commit()
+
+    summary = TransactionNormalizer(sqlite_session).normalize_all()
+
+    row = sqlite_session.query(ConsolidatedTransaction).one()
+    assert row.security_master_id is None
+    assert row.pp_group == "Unmapped"
+    assert row.has_validation_issues is True
+    assert "unresolved-security" in (row.validation_notes or "")
+    assert "unmapped-account" in (row.validation_notes or "")
+    assert summary.normalized == 1
+    assert summary.flagged == 1
