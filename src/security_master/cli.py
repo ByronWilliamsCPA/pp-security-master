@@ -15,7 +15,7 @@ Database connection details are read from the environment (see
 
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -427,20 +427,31 @@ def reconcile_positions_cmd(
     snapshot is persisted idempotently, then each (account, report_date) it
     contains is reconstructed from Layer-1 share-moving transactions and compared.
     """
-    tol = Decimal(tolerance)
+    try:
+        tol = Decimal(tolerance)
+    except InvalidOperation as exc:
+        msg = f"{tolerance!r} is not a valid decimal share tolerance."
+        raise click.BadParameter(msg, param_hint="--tolerance") from exc
     engine = create_db_engine(database_url)
     if create_schema:
         create_tables(engine)
 
     session = get_session_factory(engine)()
     try:
-        summary = IBKRPositionsImportService(session).import_from_file(file)
+        # Read and parse the snapshot once, then persist from the parsed string:
+        # import_from_file would re-read the same file. The parsed records also
+        # drive scope derivation below.
+        #
         # Derive scopes from the file's own content, not the import batch: a
         # re-import skips every row (idempotent), so a batch-scoped query would be
         # empty and the reconciliation report would silently print nothing on a
         # second run. The snapshot is persisted regardless; reconciliation reads
         # the full table for each (account, report_date) the file names.
-        records = parse_ibkr_open_positions(Path(file).read_text(encoding="utf-8"))
+        xml_content = Path(file).read_text(encoding="utf-8")
+        records = parse_ibkr_open_positions(xml_content)
+        summary = IBKRPositionsImportService(session).import_from_string(
+            xml_content, source_file=file
+        )
         scopes = sorted({(r.account_number, r.report_date) for r in records})
         click.echo(
             f"Imported {summary.positions} snapshot row(s) "
