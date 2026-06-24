@@ -3,7 +3,16 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .models import Base
@@ -243,6 +252,17 @@ class ConsolidatedTransaction(Base):
     """Consolidated view of all transactions normalized for Portfolio Performance export."""
 
     __tablename__ = "transactions_consolidated"
+
+    # #CRITICAL (data integrity): the normalizer is idempotent on this pair; the
+    # constraint is the DB-level guard behind the application existence-check.
+    # #VERIFY: test_consolidated_unique_on_source_table_and_id.
+    __table_args__ = (
+        UniqueConstraint(
+            "source_table",
+            "source_transaction_id",
+            name="uq_consolidated_source",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
