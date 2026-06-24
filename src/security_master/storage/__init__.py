@@ -1,5 +1,6 @@
 """Public re-exports for the storage layer: ORM models and the declarative base."""
 
+from .account_models import AccountMapping
 from .entity import (
     ENTITY_TYPE_TAX_FORMS,
     Client,
@@ -20,10 +21,17 @@ from .position_reconciliation import (
     ReconciliationRow,
     reconcile_positions,
 )
+from .transaction_normalizer import (
+    NormalizationSummary,
+    NormalizedRow,
+    TransactionNormalizer,
+    normalize_ibkr_row,
+)
 
 __all__ = [
     "DEFAULT_TOLERANCE",
     "ENTITY_TYPE_TAX_FORMS",
+    "AccountMapping",
     "Base",
     "Client",
     "HoldingComparison",
@@ -32,9 +40,13 @@ __all__ = [
     "KuberaSection",
     "KuberaSheet",
     "LegalEntity",
+    "NormalizationSummary",
+    "NormalizedRow",
     "PositionSnapshotBase",
     "ReconciliationRow",
     "SecurityMaster",
+    "TransactionNormalizer",
     "default_tax_form_for",
+    "normalize_ibkr_row",
     "reconcile_positions",
 ]
