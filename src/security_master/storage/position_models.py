@@ -76,7 +76,13 @@ class InteractiveBrokersOpenPosition(PositionSnapshotBase):
         ),
     )
 
-    conid: Mapped[str | None] = mapped_column(String(20), index=True)
+    # #CRITICAL (data integrity): conid is the third column of the
+    # (account_number, report_date, conid) idempotency key, so it must be
+    # NOT NULL. PostgreSQL UNIQUE treats NULLs as distinct, which would let
+    # duplicate snapshot rows past the constraint. The parser enforces this at
+    # ingest (open_position_from_element raises when conid is absent).
+    # #VERIFY: test_missing_required_attribute_raises pins the parser guarantee.
+    conid: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     figi: Mapped[str | None] = mapped_column(String(12), index=True)
     mark_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
     cost_basis_money: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))

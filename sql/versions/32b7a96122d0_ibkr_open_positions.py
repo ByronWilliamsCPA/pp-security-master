@@ -18,11 +18,20 @@ _TABLE = "ibkr_open_positions"
 _VIEW = "v_ibkr_position_reconciliation"
 
 # The view reconstructs net share quantity from Layer-1 share-moving records and
-# joins it to the persisted snapshot per (account, report_date, key). It targets
-# PostgreSQL, where the migration runs; it is never created in the SQLite test
-# schema (built from Base.metadata, not migrations), so the native FULL OUTER JOIN
-# is used. Status uses the DEFAULT tolerance (0.0001 shares); the CLI re-derives
-# status with a configurable tolerance from the raw drift.
+# joins it to the persisted snapshot per (account, report_date, key).
+# #ASSUME (external resource): this view targets PostgreSQL, where the migration
+# runs; it is never created in the SQLite test schema (built from Base.metadata,
+# not migrations), so the native FULL OUTER JOIN is used and the view itself is
+# unexercised by the SQLite test suite. The Python reconcile_positions() path is
+# the authoritative, unit-tested implementation.
+# #VERIFY: PostgreSQL parity is confirmed manually per the PR test plan
+# (alembic upgrade head, then query v_ibkr_position_reconciliation).
+# #EDGE (data integrity): COALESCE(SUM(quantity), 0) and the NOT-NULL sec_key
+# guard below keep this view aligned with the Python path, which coerces a NULL
+# quantity to 0 and skips rows whose isin and conid are both NULL.
+# #ASSUME (financial): status uses the DEFAULT tolerance (0.0001 shares); the CLI
+# re-derives status with a configurable tolerance from the raw drift.
+# #VERIFY: test_drift_at_tolerance_boundary_and_configurable_tolerance.
 _VIEW_SQL = f"""
 CREATE VIEW {_VIEW} AS
 WITH scopes AS (
@@ -33,12 +42,13 @@ recon AS (
         s.account_number AS account_number,
         s.report_date AS report_date,
         COALESCE(t.isin, t.conid) AS sec_key,
-        SUM(t.quantity) AS reconstructed_qty
+        COALESCE(SUM(t.quantity), 0) AS reconstructed_qty
     FROM scopes s
     JOIN transactions_interactive_brokers t
         ON t.account_number = s.account_number
         AND t.record_type IN ('TRADE', 'CORP_ACTION', 'TRANSFER')
         AND t.transaction_date <= s.report_date
+        AND COALESCE(t.isin, t.conid) IS NOT NULL
     GROUP BY s.account_number, s.report_date, COALESCE(t.isin, t.conid)
 ),
 snap AS (
@@ -95,7 +105,7 @@ def upgrade() -> None:
         sa.Column("source_file", sa.String(255), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
-        sa.Column("conid", sa.String(20), nullable=True),
+        sa.Column("conid", sa.String(20), nullable=False),
         sa.Column("figi", sa.String(12), nullable=True),
         sa.Column("mark_price", sa.Numeric(18, 6), nullable=True),
         sa.Column("cost_basis_money", sa.Numeric(18, 6), nullable=True),

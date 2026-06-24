@@ -149,9 +149,12 @@ def reconcile_positions(
     )
     reported: dict[str, InteractiveBrokersOpenPosition] = {}
     for snap in snapshot_rows:
+        # conid is NOT NULL on the snapshot (idempotency key), so the identity
+        # key is always present: isin preferred, conid fallback. No None guard is
+        # needed here, unlike reconstruct_net_positions where the transaction's
+        # conid is nullable.
         key = snap.isin or snap.conid
-        if key is not None:
-            reported[key] = snap
+        reported[key] = snap
 
     results: list[ReconciliationRow] = []
     for key in {*recon.keys(), *reported.keys()}:
