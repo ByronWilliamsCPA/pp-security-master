@@ -198,3 +198,15 @@ def test_transfer_unknown_direction_falls_back_and_notes_raw() -> None:
     assert isinstance(out, NormalizedRow)
     assert out.transaction_type == "TRANSFER_OUT"  # by sign
     assert any("unknown-transfer-direction:OUTBOUND" in n for n in out.notes)
+
+
+def test_every_canonical_type_is_a_view_case_key() -> None:
+    """Each type the normalizer can emit must be a CASE key in the export view,
+    or the export view would emit it to PP untranslated (the DIV-not-DIVIDEND trap).
+    """
+    from security_master.storage.transaction_normalizer import CANONICAL_TYPES
+    from security_master.storage.views import VIEW_TRANSACTIONS_FOR_PP_EXPORT
+
+    view_sql = str(VIEW_TRANSACTIONS_FOR_PP_EXPORT.text)
+    for ttype in CANONICAL_TYPES:
+        assert f"= '{ttype}'" in view_sql, f"{ttype} missing from export view CASE"
