@@ -377,3 +377,38 @@ def test_reconciliation_invariant_matches_sp2(sqlite_session) -> None:
     agg = l1_net.get(isin)
     assert _layer2_net_shares(l2_rows) == Decimal(0)
     assert (agg.qty if agg is not None else Decimal(0)) == Decimal(0)
+
+
+def test_normalize_all_is_idempotent(sqlite_session) -> None:
+    from security_master.storage.transaction_models import ConsolidatedTransaction
+    from security_master.storage.transaction_normalizer import TransactionNormalizer
+
+    sqlite_session.add(_l1("TRADE", transaction_type="BUY", quantity=Decimal(10)))
+    sqlite_session.commit()
+
+    TransactionNormalizer(sqlite_session).normalize_all()
+    count_first = sqlite_session.query(ConsolidatedTransaction).count()
+    TransactionNormalizer(sqlite_session).normalize_all()
+    count_second = sqlite_session.query(ConsolidatedTransaction).count()
+
+    assert count_first == 1
+    assert count_second == 1
+
+
+def test_normalize_all_preserves_export_flags_on_rerun(sqlite_session) -> None:
+    from security_master.storage.transaction_models import ConsolidatedTransaction
+    from security_master.storage.transaction_normalizer import TransactionNormalizer
+
+    sqlite_session.add(_l1("TRADE", transaction_type="BUY", quantity=Decimal(10)))
+    sqlite_session.commit()
+    TransactionNormalizer(sqlite_session).normalize_all()
+
+    row = sqlite_session.query(ConsolidatedTransaction).one()
+    row.exported_to_pp = True
+    row.export_batch_id = "exp-1"
+    sqlite_session.commit()
+
+    TransactionNormalizer(sqlite_session).normalize_all()
+    row = sqlite_session.query(ConsolidatedTransaction).one()
+    assert row.exported_to_pp is True
+    assert row.export_batch_id == "exp-1"
