@@ -20,8 +20,13 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
+from security_master.storage.account_models import AccountMapping
+from security_master.storage.models import SecurityMaster
+
 if TYPE_CHECKING:
     from datetime import date
+
+    from sqlalchemy.orm import Session
 
     from security_master.storage.transaction_models import (
         InteractiveBrokersTransaction,
@@ -202,3 +207,67 @@ def normalize_ibkr_row(
     if handler is None:
         return SkipReason(f"unknown_record_type:{row.record_type}")
     return handler(row)
+
+
+def resolve_security(
+    session: Session,
+    isin: str | None,
+    symbol: str | None,
+) -> int | None:
+    """Resolve a Layer-1 row's identifiers to a SecurityMaster id.
+
+    Resolution order is isin then symbol. securities_master has no cusip column,
+    so a cusip-only Layer-1 row resolves to None and is flagged, not dropped.
+
+    Args:
+        session: Active SQLAlchemy session.
+        isin: ISIN to match first.
+        symbol: Symbol to match if ISIN does not resolve.
+
+    Returns:
+        The matching ``SecurityMaster.id``, or None when neither resolves.
+    """
+    if isin:
+        hit = (
+            session.query(SecurityMaster.id)
+            .filter(SecurityMaster.isin == isin)
+            .scalar()
+        )
+        if hit is not None:
+            return hit
+    if symbol:
+        hit = (
+            session.query(SecurityMaster.id)
+            .filter(SecurityMaster.symbol == symbol)
+            .scalar()
+        )
+        if hit is not None:
+            return hit
+    return None
+
+
+def resolve_account(
+    session: Session,
+    account_number: str | None,
+) -> tuple[str, str, bool]:
+    """Resolve a broker account_number to (pp_group, pp_account, mapped).
+
+    Args:
+        session: Active SQLAlchemy session.
+        account_number: The Layer-1 broker account number (may be None).
+
+    Returns:
+        A tuple of (pp_group, pp_account, mapped). Unmapped accounts return the
+        sentinel group/account and mapped=False so the NOT-NULL contract holds
+        and the row is flagged, never dropped.
+    """
+    if account_number:
+        row = (
+            session.query(AccountMapping)
+            .filter(AccountMapping.account_number == account_number)
+            .first()
+        )
+        if row is not None:
+            return row.pp_group, row.pp_account, True
+        return UNMAPPED_GROUP, account_number, False
+    return UNMAPPED_GROUP, UNKNOWN_ACCOUNT, False

@@ -210,3 +210,36 @@ def test_every_canonical_type_is_a_view_case_key() -> None:
     view_sql = str(VIEW_TRANSACTIONS_FOR_PP_EXPORT.text)
     for ttype in CANONICAL_TYPES:
         assert f"= '{ttype}'" in view_sql, f"{ttype} missing from export view CASE"
+
+
+def test_resolve_security_isin_then_symbol(sqlite_session) -> None:
+    from security_master.storage.models import SecurityMaster
+    from security_master.storage.transaction_normalizer import resolve_security
+
+    sqlite_session.add(SecurityMaster(name="Acme", isin="US0000000001", symbol="ACME"))
+    sqlite_session.add(SecurityMaster(name="Beta", isin=None, symbol="BETA"))
+    sqlite_session.commit()
+
+    by_isin = resolve_security(sqlite_session, isin="US0000000001", symbol="ZZZ")
+    by_symbol = resolve_security(sqlite_session, isin=None, symbol="BETA")
+    unresolved = resolve_security(sqlite_session, isin=None, symbol="NOPE")
+    assert by_isin is not None
+    assert by_symbol is not None
+    assert unresolved is None
+
+
+def test_resolve_account_mapped_and_unmapped(sqlite_session) -> None:
+    from security_master.storage.account_models import AccountMapping
+    from security_master.storage.transaction_normalizer import (
+        UNMAPPED_GROUP,
+        resolve_account,
+    )
+
+    sqlite_session.add(
+        AccountMapping(account_number="U1", pp_group="Taxable", pp_account="IBKR")
+    )
+    sqlite_session.commit()
+
+    assert resolve_account(sqlite_session, "U1") == ("Taxable", "IBKR", True)
+    assert resolve_account(sqlite_session, "U9") == (UNMAPPED_GROUP, "U9", False)
+    assert resolve_account(sqlite_session, None) == (UNMAPPED_GROUP, "UNKNOWN", False)
