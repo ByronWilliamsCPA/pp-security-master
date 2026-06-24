@@ -22,6 +22,7 @@ from sqlalchemy import engine_from_config, pool
 from security_master.storage import (
     entity,  # noqa: F401  -- registers clients + legal_entities Entity Registry tables
     models,  # noqa: F401  -- registers core + Kubera tables, defines Base
+    position_models,  # noqa: F401  -- registers broker position-snapshot tables
     pp_models,  # noqa: F401  -- registers pp_* Portfolio Performance tables
     transaction_models,  # noqa: F401  -- registers broker transaction tables
 )
