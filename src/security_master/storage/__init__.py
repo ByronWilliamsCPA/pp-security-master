@@ -1,5 +1,6 @@
 """Public re-exports for the storage layer: ORM models and the declarative base."""
 
+from .account_models import AccountMapping
 from .entity import (
     ENTITY_TYPE_TAX_FORMS,
     Client,
@@ -24,6 +25,7 @@ from .position_reconciliation import (
 __all__ = [
     "DEFAULT_TOLERANCE",
     "ENTITY_TYPE_TAX_FORMS",
+    "AccountMapping",
     "Base",
     "Client",
     "HoldingComparison",
