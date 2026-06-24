@@ -179,3 +179,22 @@ def test_cash_withdrawal_combined_label_negative_is_withdrawal() -> None:
     )
     assert isinstance(out, NormalizedRow)
     assert out.transaction_type == "WITHDRAWAL"
+
+
+def test_transfer_unknown_direction_falls_back_and_notes_raw() -> None:
+    from security_master.storage.transaction_normalizer import (
+        NormalizedRow,
+        normalize_ibkr_row,
+    )
+
+    out = normalize_ibkr_row(
+        _l1(
+            "TRANSFER",
+            transaction_type="ACATS",
+            direction="OUTBOUND",
+            quantity=Decimal(-5),
+        )
+    )
+    assert isinstance(out, NormalizedRow)
+    assert out.transaction_type == "TRANSFER_OUT"  # by sign
+    assert any("unknown-transfer-direction:OUTBOUND" in n for n in out.notes)

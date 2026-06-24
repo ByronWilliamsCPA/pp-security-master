@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
 SOURCE_TABLE_IBKR = "transactions_interactive_brokers"
 SOURCE_INSTITUTION_IBKR = "ibkr"
+# Consumed by the persistence service (account resolution) in a later task.
 UNMAPPED_GROUP = "Unmapped"
 UNKNOWN_ACCOUNT = "UNKNOWN"
 
@@ -144,13 +145,18 @@ def _normalize_corp_action(
     row: InteractiveBrokersTransaction,
 ) -> NormalizedRow | SkipReason:
     label = f"{row.transaction_type or ''} {row.action_description or ''}".lower()
+    # Order matters: a split is a skip; the merger check below maps to SELL.
     if "split" in label:
         return SkipReason("split")
     qty = row.quantity if row.quantity is not None else Decimal(0)
     if "merger" in label or row.transaction_type == "TC":
         # Cash merger: remove shares (SELL) and carry the cash proceeds.
         return _base(row, "SELL", abs(qty), ["corp-action:merger"])
-    # Other share-delta corporate action: preserve net shares by sign direction.
+    # #ASSUME (data integrity): a non-merger share-delta corporate action (spin-off,
+    # bonus shares, warrant distribution) is represented with the TRANSFER vocabulary
+    # so the holdings view's net-share math still applies. This labels it a transfer
+    # rather than a corporate action in PP, an accepted SP3 simplification.
+    # #VERIFY: net shares for such rows still reconcile via the Task 7 invariant test.
     ttype = "TRANSFER_IN" if qty >= 0 else "TRANSFER_OUT"
     return _base(row, ttype, abs(qty), ["corp-action:other"])
 
@@ -160,9 +166,17 @@ def _normalize_transfer(
 ) -> NormalizedRow | SkipReason:
     qty = row.quantity if row.quantity is not None else Decimal(0)
     direction = (row.direction or "").upper()
-    if direction == "IN" or (direction == "" and qty >= 0):
-        return _base(row, "TRANSFER_IN", abs(qty), [])
-    return _base(row, "TRANSFER_OUT", abs(qty), [])
+    notes: list[str] = []
+    if direction == "IN":
+        return _base(row, "TRANSFER_IN", abs(qty), notes)
+    if direction == "OUT":
+        return _base(row, "TRANSFER_OUT", abs(qty), notes)
+    if direction != "":
+        # Unrecognized direction literal: fall back to sign, preserve the raw
+        # value for observability.
+        notes.append(f"unknown-transfer-direction:{row.direction}")
+    ttype = "TRANSFER_IN" if qty >= 0 else "TRANSFER_OUT"
+    return _base(row, ttype, abs(qty), notes)
 
 
 def normalize_ibkr_row(
