@@ -95,6 +95,9 @@ def test_corp_action_cash_merger_maps_to_sell_carrying_proceeds() -> None:
         normalize_ibkr_row,
     )
 
+    # SP1 zeroes corporate-action `amount` for the cents-rounded cashless fallback
+    # while `proceeds` keeps the economic cash. amount=0 here guards that net_amount
+    # follows proceeds, so the cash side of a cash merger is not dropped to 0.
     out = normalize_ibkr_row(
         _l1(
             "CORP_ACTION",
@@ -102,14 +105,114 @@ def test_corp_action_cash_merger_maps_to_sell_carrying_proceeds() -> None:
             action_description="DBJA cash merger",
             quantity=Decimal(-4156),
             proceeds=Decimal("41560.00"),
-            amount=Decimal("41560.00"),
+            amount=Decimal(0),
         )
     )
     assert isinstance(out, NormalizedRow)
     assert out.transaction_type == "SELL"
     assert out.quantity == Decimal(4156)
     assert out.net_amount == Decimal("41560.00")
+    assert out.gross_amount == Decimal("41560.00")
     assert "corp-action:merger" in out.notes
+
+
+def test_corp_action_merger_via_label_without_tc_code() -> None:
+    """A merger row whose type code is not 'TC' must still map via the 'merger'
+    label substring, not fall through to the TRANSFER 'other corp action' path.
+    """
+    from security_master.storage.transaction_normalizer import (
+        NormalizedRow,
+        normalize_ibkr_row,
+    )
+
+    out = normalize_ibkr_row(
+        _l1(
+            "CORP_ACTION",
+            transaction_type="XYZ",
+            action_description="ACME cash merger completed",
+            quantity=Decimal(-100),
+            proceeds=Decimal("2500.00"),
+            amount=Decimal(0),
+        )
+    )
+    assert isinstance(out, NormalizedRow)
+    assert out.transaction_type == "SELL"
+    assert "corp-action:merger" in out.notes
+
+
+def test_fees_total_sums_absolute_values_of_present_fee_columns() -> None:
+    from security_master.storage.transaction_normalizer import (
+        NormalizedRow,
+        normalize_ibkr_row,
+    )
+
+    out = normalize_ibkr_row(
+        _l1(
+            "TRADE",
+            transaction_type="BUY",
+            quantity=Decimal(10),
+            commission=Decimal("-1.25"),
+            fees=Decimal("0.50"),
+            regulatory_fees=Decimal("-0.25"),
+        )
+    )
+    assert isinstance(out, NormalizedRow)
+    # abs(-1.25) + abs(0.50) + abs(-0.25); the two absent columns contribute nothing.
+    assert out.fees_total == Decimal("2.00")
+
+
+def test_fees_total_is_none_when_no_fee_columns_present() -> None:
+    from security_master.storage.transaction_normalizer import (
+        NormalizedRow,
+        normalize_ibkr_row,
+    )
+
+    out = normalize_ibkr_row(_l1("TRADE", transaction_type="BUY", quantity=Decimal(1)))
+    assert isinstance(out, NormalizedRow)
+    assert out.fees_total is None
+
+
+def test_amounts_gross_follows_proceeds_when_present_and_distinct() -> None:
+    """gross_amount follows proceeds; net_amount follows amount when amount is
+    non-zero, so the two branches of _amounts are distinguishable.
+    """
+    from security_master.storage.transaction_normalizer import (
+        NormalizedRow,
+        normalize_ibkr_row,
+    )
+
+    out = normalize_ibkr_row(
+        _l1(
+            "TRADE",
+            transaction_type="BUY",
+            quantity=Decimal(10),
+            amount=Decimal("100.00"),
+            proceeds=Decimal("105.00"),
+        )
+    )
+    assert isinstance(out, NormalizedRow)
+    assert out.gross_amount == Decimal("105.00")
+    assert out.net_amount == Decimal("100.00")
+
+
+def test_amounts_gross_falls_back_to_net_when_proceeds_absent() -> None:
+    from security_master.storage.transaction_normalizer import (
+        NormalizedRow,
+        normalize_ibkr_row,
+    )
+
+    out = normalize_ibkr_row(
+        _l1(
+            "TRADE",
+            transaction_type="BUY",
+            quantity=Decimal(10),
+            amount=Decimal("100.00"),
+            proceeds=None,
+        )
+    )
+    assert isinstance(out, NormalizedRow)
+    assert out.gross_amount == Decimal("100.00")
+    assert out.net_amount == Decimal("100.00")
 
 
 def test_transfer_in_maps_by_direction() -> None:
@@ -306,17 +409,89 @@ def test_normalize_all_flags_unresolved_and_unmapped(sqlite_session) -> None:
     assert summary.flagged == 1
 
 
-def _layer2_net_shares(rows) -> Decimal:
-    """Mirror the holdings-view CASE: +qty for inflow types, -qty for outflow."""
-    from security_master.storage.transaction_normalizer import _INFLOW, _OUTFLOW
+def test_normalize_all_notes_missing_account_number_distinctly(sqlite_session) -> None:
+    """A row with no account number is flagged distinctly from a present-but-
+    unseeded account, so triage can tell an upstream gap from a missing mapping.
+    """
+    from security_master.storage.transaction_models import ConsolidatedTransaction
+    from security_master.storage.transaction_normalizer import TransactionNormalizer
 
+    sqlite_session.add(
+        _l1("TRADE", transaction_type="BUY", quantity=Decimal(3), account_number=None)
+    )
+    sqlite_session.commit()
+
+    TransactionNormalizer(sqlite_session).normalize_all()
+
+    row = sqlite_session.query(ConsolidatedTransaction).one()
+    assert "missing-account-number" in (row.validation_notes or "")
+    assert "unmapped-account" not in (row.validation_notes or "")
+
+
+def test_normalize_all_records_unknown_subtype_ids(sqlite_session) -> None:
+    """An unrecognized record type is counted AND its Layer-1 id is captured for
+    audit, so a genuinely-new IBKR subtype is not lost behind an aggregate count.
+    """
+    from security_master.storage.transaction_normalizer import TransactionNormalizer
+
+    mystery = _l1("MYSTERY", transaction_type="X", quantity=Decimal(1))
+    sqlite_session.add(mystery)
+    sqlite_session.commit()
+
+    summary = TransactionNormalizer(sqlite_session).normalize_all()
+
+    assert summary.skipped == 1
+    assert summary.unknown_subtype_ids == [mystery.id]
+
+
+def test_normalize_all_isolates_a_failing_row(sqlite_session, monkeypatch) -> None:
+    """One row that fails to persist is recorded in summary.errors and does not
+    abort the batch; the other rows still normalize.
+    """
+    from security_master.storage.transaction_models import ConsolidatedTransaction
+    from security_master.storage.transaction_normalizer import TransactionNormalizer
+
+    sqlite_session.add(_l1("TRADE", transaction_type="BUY", quantity=Decimal(1)))
+    sqlite_session.add(_l1("TRADE", transaction_type="SELL", quantity=Decimal(-2)))
+    sqlite_session.commit()
+
+    normalizer = TransactionNormalizer(sqlite_session)
+    real_upsert = normalizer._upsert  # noqa: SLF001 -- same-package test seam
+    calls = {"n": 0}
+
+    def flaky(l1, mapped, existing):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            error_msg = "boom"
+            raise ValueError(error_msg)
+        return real_upsert(l1, mapped, existing)
+
+    monkeypatch.setattr(normalizer, "_upsert", flaky)
+
+    summary = normalizer.normalize_all()
+
+    assert len(summary.errors) == 1
+    assert summary.normalized == 1
+    assert sqlite_session.query(ConsolidatedTransaction).count() == 1
+
+
+def _layer2_net_shares(rows) -> Decimal:
+    """Mirror the holdings-view CASE: +qty for inflow types, -qty for outflow.
+
+    The inflow/outflow partition is hard-coded here (not imported from the
+    production module) so this gate-critical reconciliation check fails if
+    production ever moves a type across the inflow/outflow boundary, rather than
+    shifting its own expectation in lockstep.
+    """
+    inflow = {"BUY", "DEPOSIT", "TRANSFER_IN"}
+    outflow = {"SELL", "WITHDRAWAL", "TRANSFER_OUT"}
     total = Decimal(0)
     for r in rows:
         if r.quantity is None:
             continue
-        if r.transaction_type in _INFLOW:
+        if r.transaction_type in inflow:
             total += r.quantity
-        elif r.transaction_type in _OUTFLOW:
+        elif r.transaction_type in outflow:
             total -= r.quantity
     return total
 

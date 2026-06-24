@@ -52,6 +52,21 @@ def test_export_view_returns_pp_labels_when_fed() -> None:
             "integration test requires a live database"
         )
 
+    # Destructive-target guard: this test runs Base.metadata.drop_all on the
+    # resolved URL. The reachability probe protects against an ABSENT database,
+    # not a present-but-wrong one. The conftest autouse fixture always sets
+    # DATABASE_URL to a localhost value, so a developer pointing it at a real
+    # database would otherwise have every table wiped. Refuse to drop unless the
+    # database name marks it disposable (CI and conftest both use "test_db").
+    db_name = (engine.url.database or "").lower()
+    if "test" not in db_name:
+        engine.dispose()
+        pytest.skip(
+            f"refusing to run destructive drop_all against non-test database "
+            f"'{engine.url.database}'; point PPSM_TEST_DATABASE_URL at a "
+            f"disposable test database (name must contain 'test')"
+        )
+
     # Drop views before tables: views depend on tables so table drop fails when
     # views exist (e.g. left behind by a previous interrupted run).
     drop_all_views(engine)
