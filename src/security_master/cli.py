@@ -51,6 +51,7 @@ from security_master.storage.position_reconciliation import (
     DEFAULT_TOLERANCE,
     reconcile_positions,
 )
+from security_master.storage.transaction_normalizer import TransactionNormalizer
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -476,6 +477,63 @@ def reconcile_positions_cmd(
                 counts[r.status] = counts.get(r.status, 0) + 1
             summary_line = ", ".join(f"{k}={v}" for k, v in sorted(counts.items()))
             click.echo(f"  Summary: {summary_line}")
+    finally:
+        session.close()
+        engine.dispose()
+
+
+@app.command("normalize-transactions")
+@click.option(
+    "--institution",
+    default="ibkr",
+    show_default=True,
+    help="Source institution to normalize. Only 'ibkr' is supported for now.",
+)
+@click.option(
+    "--database-url",
+    default=None,
+    help="Override database URL. Defaults to DB_* environment variables.",
+)
+@click.option(
+    "--create-schema/--no-create-schema",
+    default=False,
+    show_default=True,
+    help="Create tables before normalizing (useful for a fresh database).",
+)
+def normalize_transactions_cmd(
+    institution: str,
+    database_url: str | None,
+    create_schema: bool,
+) -> None:
+    """Normalize Layer-1 broker rows into Layer-2 transactions_consolidated.
+
+    Reads the per-institution Layer-1 table, maps each row to the broker-agnostic
+    Layer-2 vocabulary, resolves classification and PP account, and writes
+    transactions_consolidated idempotently.
+    """
+    if institution not in _SUPPORTED_INSTITUTIONS:
+        supported = ", ".join(_SUPPORTED_INSTITUTIONS)
+        msg = (
+            f"Unsupported institution '{institution}'. "
+            f"Supported institutions: {supported}."
+        )
+        raise click.BadParameter(msg, param_hint="--institution")
+
+    engine = create_db_engine(database_url)
+    if create_schema:
+        create_tables(engine)
+
+    session = get_session_factory(engine)()
+    try:
+        summary = TransactionNormalizer(session).normalize_all()
+        skipped_detail = ", ".join(
+            f"{k}={v}" for k, v in sorted(summary.skipped_by.items())
+        )
+        click.echo(
+            f"normalized {summary.normalized}, "
+            f"skipped {summary.skipped} ({skipped_detail or 'none'}), "
+            f"flagged {summary.flagged}, batch {summary.batch_id}."
+        )
     finally:
         session.close()
         engine.dispose()
