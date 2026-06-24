@@ -275,6 +275,7 @@ def test_normalize_all_writes_resolved_and_flagged_rows(sqlite_session) -> None:
     assert rows[0].security_master_id is not None
     assert rows[0].pp_group == "Taxable"
     assert rows[0].has_validation_issues is False
+    assert rows[0].quality_score == Decimal("1.00")
 
 
 def test_normalize_all_flags_unresolved_and_unmapped(sqlite_session) -> None:
@@ -298,6 +299,7 @@ def test_normalize_all_flags_unresolved_and_unmapped(sqlite_session) -> None:
     assert row.security_master_id is None
     assert row.pp_group == "Unmapped"
     assert row.has_validation_issues is True
+    assert row.quality_score == Decimal("0.5")
     assert "unresolved-security" in (row.validation_notes or "")
     assert "unmapped-account" in (row.validation_notes or "")
     assert summary.normalized == 1
@@ -497,3 +499,50 @@ def test_unknown_record_type_is_skipped() -> None:
     out = normalize_ibkr_row(_l1("MYSTERY", transaction_type="X", quantity=Decimal(1)))
     assert isinstance(out, SkipReason)
     assert out.reason.startswith("unknown_record_type")
+
+
+def test_reconciliation_invariant_nonzero_net(sqlite_session) -> None:
+    """A TRADE plus an ACATS transfer leave a non-zero net that must match SP2.
+
+    Net-zero anchors cannot catch a symmetric inflow/outflow sign swap; this
+    asserts a positive net on both the Layer-2 (view CASE) and SP2 sides.
+    """
+    from security_master.storage.position_reconciliation import (
+        reconstruct_net_positions,
+    )
+    from security_master.storage.transaction_models import ConsolidatedTransaction
+    from security_master.storage.transaction_normalizer import TransactionNormalizer
+
+    isin = "US000ACAT001"
+    sqlite_session.add(
+        _l1(
+            "TRADE",
+            isin=isin,
+            symbol="ACAT",
+            transaction_type="BUY",
+            quantity=Decimal(10),
+        )
+    )
+    sqlite_session.add(
+        _l1(
+            "TRANSFER",
+            isin=isin,
+            symbol="ACAT",
+            transaction_type="ACATS",
+            direction="IN",
+            quantity=Decimal(5),
+        )
+    )
+    sqlite_session.commit()
+
+    TransactionNormalizer(sqlite_session).normalize_all()
+
+    l2_rows = (
+        sqlite_session.query(ConsolidatedTransaction)
+        .filter(ConsolidatedTransaction.isin == isin)
+        .all()
+    )
+    l1_net = reconstruct_net_positions(sqlite_session, "U13052577", date(2024, 12, 31))
+    agg = l1_net.get(isin)
+    assert _layer2_net_shares(l2_rows) == Decimal(15)
+    assert (agg.qty if agg is not None else Decimal(0)) == Decimal(15)

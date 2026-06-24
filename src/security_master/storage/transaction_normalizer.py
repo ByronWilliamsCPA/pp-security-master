@@ -388,5 +388,6 @@ class TransactionNormalizer:
         target.net_amount = mapped.net_amount
         target.currency = mapped.currency
         target.has_validation_issues = has_issues
+        target.quality_score = Decimal("0.5") if has_issues else Decimal("1.00")
         target.validation_notes = "; ".join(notes) if notes else None
         summary.normalized += 1
