@@ -412,3 +412,88 @@ def test_normalize_all_preserves_export_flags_on_rerun(sqlite_session) -> None:
     row = sqlite_session.query(ConsolidatedTransaction).one()
     assert row.exported_to_pp is True
     assert row.export_batch_id == "exp-1"
+
+
+def test_corp_action_split_is_skipped() -> None:
+    from security_master.storage.transaction_normalizer import (
+        SkipReason,
+        normalize_ibkr_row,
+    )
+
+    out = normalize_ibkr_row(
+        _l1(
+            "CORP_ACTION",
+            transaction_type="FS",
+            action_description="10:1 split",
+            quantity=Decimal(90),
+        )
+    )
+    assert isinstance(out, SkipReason)
+    assert out.reason == "split"
+
+
+def test_corp_action_other_share_delta_maps_to_transfer_by_sign() -> None:
+    from security_master.storage.transaction_normalizer import (
+        NormalizedRow,
+        normalize_ibkr_row,
+    )
+
+    out = normalize_ibkr_row(
+        _l1(
+            "CORP_ACTION",
+            transaction_type="SO",
+            action_description="spin-off shares",
+            quantity=Decimal(7),
+        )
+    )
+    assert isinstance(out, NormalizedRow)
+    assert out.transaction_type == "TRANSFER_IN"
+    assert out.quantity == Decimal(7)
+    assert "corp-action:other" in out.notes
+
+
+def test_cash_reinvestment_is_skipped() -> None:
+    from security_master.storage.transaction_normalizer import (
+        SkipReason,
+        normalize_ibkr_row,
+    )
+
+    out = normalize_ibkr_row(
+        _l1(
+            "CASH",
+            transaction_type="Dividend Reinvestment",
+            quantity=None,
+            amount=Decimal(25),
+        )
+    )
+    assert isinstance(out, SkipReason)
+    assert out.reason == "reinvestment_funding"
+
+
+def test_cash_unknown_type_is_skipped() -> None:
+    from security_master.storage.transaction_normalizer import (
+        SkipReason,
+        normalize_ibkr_row,
+    )
+
+    out = normalize_ibkr_row(
+        _l1(
+            "CASH",
+            transaction_type="Mystery Adjustment",
+            quantity=None,
+            amount=Decimal(1),
+        )
+    )
+    assert isinstance(out, SkipReason)
+    assert out.reason == "unknown_cash_type"
+
+
+def test_unknown_record_type_is_skipped() -> None:
+    from security_master.storage.transaction_normalizer import (
+        SkipReason,
+        normalize_ibkr_row,
+    )
+
+    out = normalize_ibkr_row(_l1("MYSTERY", transaction_type="X", quantity=Decimal(1)))
+    assert isinstance(out, SkipReason)
+    assert out.reason.startswith("unknown_record_type")
