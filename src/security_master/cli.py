@@ -534,6 +534,18 @@ def normalize_transactions_cmd(
             f"skipped {summary.skipped} ({skipped_detail or 'none'}), "
             f"flagged {summary.flagged}, batch {summary.batch_id}."
         )
+        if summary.unknown_subtype_ids:
+            click.echo(
+                f"unrecognized-subtype rows not represented in Layer-2: "
+                f"{len(summary.unknown_subtype_ids)} "
+                f"(L1 ids: {summary.unknown_subtype_ids})"
+            )
+        if summary.errors:
+            click.echo(
+                f"row errors not persisted: {len(summary.errors)} "
+                f"(L1 ids: {sorted(summary.errors)})",
+                err=True,
+            )
     finally:
         session.close()
         engine.dispose()

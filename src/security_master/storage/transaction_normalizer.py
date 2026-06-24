@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, get_args
 from uuid import uuid4
 
 from security_master.storage.account_models import AccountMapping
@@ -39,23 +39,31 @@ SOURCE_INSTITUTION_IBKR = "ibkr"
 UNMAPPED_GROUP = "Unmapped"
 UNKNOWN_ACCOUNT = "UNKNOWN"
 
-# The 7 literals v_transactions_for_pp_export keys on (storage/views.py CASE).
-CANONICAL_TYPES: frozenset[str] = frozenset(
-    {"BUY", "SELL", "DIV", "DEPOSIT", "WITHDRAWAL", "TRANSFER_IN", "TRANSFER_OUT"}
-)
-_INFLOW: frozenset[str] = frozenset({"BUY", "DEPOSIT", "TRANSFER_IN"})
-_OUTFLOW: frozenset[str] = frozenset({"SELL", "WITHDRAWAL", "TRANSFER_OUT"})
+# The canonical broker-agnostic transaction vocabulary. These are exactly the 7
+# literals v_transactions_for_pp_export keys on (storage/views.py CASE); any other
+# value would be emitted to Portfolio Performance untranslated. Typing the field as
+# this Literal lets basedpyright reject a typo'd handler output (e.g. "DIVIDEND") at
+# the point of the mistake, complementing the runtime view-CASE membership test.
+CanonicalType = Literal[
+    "BUY", "SELL", "DIV", "DEPOSIT", "WITHDRAWAL", "TRANSFER_IN", "TRANSFER_OUT"
+]
+# Derived from CanonicalType so the runtime set and the type cannot drift.
+CANONICAL_TYPES: frozenset[CanonicalType] = frozenset(get_args(CanonicalType))
+_INFLOW: frozenset[CanonicalType] = frozenset({"BUY", "DEPOSIT", "TRANSFER_IN"})
+_OUTFLOW: frozenset[CanonicalType] = frozenset({"SELL", "WITHDRAWAL", "TRANSFER_OUT"})
 
 
 @dataclass(frozen=True)
 class NormalizedRow:
     """The broker-agnostic field values for one Layer-2 row, pre-resolution."""
 
-    transaction_type: str
+    transaction_type: CanonicalType
     transaction_date: date
     security_name: str
     isin: str | None
     symbol: str | None
+    # None for DIV/DEPOSIT/WITHDRAWAL (no share movement); a POSITIVE magnitude
+    # otherwise, with direction carried by ``transaction_type`` (see module #CRITICAL).
     quantity: Decimal | None
     price: Decimal | None
     gross_amount: Decimal
@@ -89,17 +97,24 @@ def _fees_total(row: InteractiveBrokersTransaction) -> Decimal | None:
 
 
 def _amounts(row: InteractiveBrokersTransaction) -> tuple[Decimal, Decimal]:
-    # #ASSUME (financial): net = abs(amount); gross = abs(proceeds) when present,
-    # else abs(amount). SP3 does not reconcile price/value beyond classification.
-    # #VERIFY: anchor tests assert the merger row carries non-zero proceeds.
+    # #CRITICAL (financial): net follows abs(amount); gross follows abs(proceeds)
+    # when present, else abs(amount). The IBKR Layer-1 extractor (SP1) zeroes
+    # corporate-action `amount` for the cents-rounded cashless fallback while
+    # `proceeds` keeps the raw economic cash. When amount is 0 and proceeds is
+    # present, net follows proceeds so the cash side of a cash merger is not
+    # dropped to 0 in Layer-2. SP3 does not otherwise reconcile price/value.
+    # #VERIFY: test_corp_action_cash_merger_maps_to_sell_carrying_proceeds asserts
+    # net follows proceeds when amount is 0.
     net = abs(row.amount)
     gross = abs(row.proceeds) if row.proceeds is not None else net
+    if net == 0 and row.proceeds is not None:
+        net = abs(row.proceeds)
     return gross, net
 
 
 def _base(
     row: InteractiveBrokersTransaction,
-    transaction_type: str,
+    transaction_type: CanonicalType,
     quantity: Decimal | None,
     notes: list[str],
 ) -> NormalizedRow:
@@ -124,7 +139,7 @@ def _base(
 
 def _normalize_trade(row: InteractiveBrokersTransaction) -> NormalizedRow | SkipReason:
     qty = row.quantity if row.quantity is not None else Decimal(0)
-    ttype = "BUY" if qty >= 0 else "SELL"
+    ttype: CanonicalType = "BUY" if qty >= 0 else "SELL"
     return _base(row, ttype, abs(qty), [])
 
 
@@ -140,7 +155,7 @@ def _normalize_cash(row: InteractiveBrokersTransaction) -> NormalizedRow | SkipR
     if "deposit" in label or "withdrawal" in label:
         # IBKR often uses a single combined "Deposits/Withdrawals" type, so the
         # direction comes from the amount sign, not the label text.
-        ttype = "WITHDRAWAL" if row.amount < 0 else "DEPOSIT"
+        ttype: CanonicalType = "WITHDRAWAL" if row.amount < 0 else "DEPOSIT"
         return _base(row, ttype, None, [])
     if any(k in label for k in ("interest", "fee", "tax")):
         return SkipReason("fee_interest")
@@ -163,7 +178,7 @@ def _normalize_corp_action(
     # so the holdings view's net-share math still applies. This labels it a transfer
     # rather than a corporate action in PP, an accepted SP3 simplification.
     # #VERIFY: net shares for such rows still reconcile via the Task 7 invariant test.
-    ttype = "TRANSFER_IN" if qty >= 0 else "TRANSFER_OUT"
+    ttype: CanonicalType = "TRANSFER_IN" if qty >= 0 else "TRANSFER_OUT"
     return _base(row, ttype, abs(qty), ["corp-action:other"])
 
 
@@ -181,7 +196,7 @@ def _normalize_transfer(
         # Unrecognized direction literal: fall back to sign, preserve the raw
         # value for observability.
         notes.append(f"unknown-transfer-direction:{row.direction}")
-    ttype = "TRANSFER_IN" if qty >= 0 else "TRANSFER_OUT"
+    ttype: CanonicalType = "TRANSFER_IN" if qty >= 0 else "TRANSFER_OUT"
     return _base(row, ttype, abs(qty), notes)
 
 
@@ -284,6 +299,11 @@ class NormalizationSummary:
         skipped: Layer-1 rows deliberately not represented (by reason in skipped_by).
         flagged: Written rows with has_validation_issues=True.
         skipped_by: Count of skipped rows grouped by SkipReason.reason.
+        unknown_subtype_ids: Layer-1 ids skipped for an UNRECOGNIZED subtype (a
+            genuinely-new IBKR record/cash type), kept queryable so a new subtype
+            is auditable rather than lost behind an aggregate count.
+        errors: Layer-1 id -> error string for rows that failed to persist. Per-row
+            fault isolation: one failing row does not abort the batch.
     """
 
     batch_id: str
@@ -291,6 +311,8 @@ class NormalizationSummary:
     skipped: int = 0
     flagged: int = 0
     skipped_by: dict[str, int] = field(default_factory=dict)
+    unknown_subtype_ids: list[int] = field(default_factory=list)
+    errors: dict[int, str] = field(default_factory=dict)
 
 
 class TransactionNormalizer:
@@ -325,8 +347,26 @@ class TransactionNormalizer:
                 summary.skipped_by[mapped.reason] = (
                     summary.skipped_by.get(mapped.reason, 0) + 1
                 )
+                # Record unrecognized subtypes (not the deliberate fee/split/
+                # reinvestment skips) so a genuinely-new IBKR type is auditable.
+                if mapped.reason.startswith("unknown_"):
+                    summary.unknown_subtype_ids.append(l1.id)
                 continue
-            self._upsert(l1, mapped, existing, summary)
+            try:
+                # Per-row SAVEPOINT: a column-width or constraint violation raises
+                # at flush, not at attribute-set, so a plain try/except around the
+                # field writes would never catch it. The nested transaction gives
+                # each row its own flush boundary; a failure rolls back only that
+                # row and the batch continues. Counters are incremented only after
+                # the savepoint releases cleanly.
+                with self.session.begin_nested():
+                    target, flagged = self._upsert(l1, mapped, existing)
+                existing[l1.id] = target
+                summary.normalized += 1
+                if flagged:
+                    summary.flagged += 1
+            except Exception as exc:  # noqa: BLE001 -- isolate one row, never abort the batch
+                summary.errors[l1.id] = f"{type(exc).__name__}: {exc}"
         self.session.commit()
         return summary
 
@@ -343,8 +383,7 @@ class TransactionNormalizer:
         l1: InteractiveBrokersTransaction,
         mapped: NormalizedRow,
         existing: dict[int, ConsolidatedTransaction],
-        summary: NormalizationSummary,
-    ) -> None:
+    ) -> tuple[ConsolidatedTransaction, bool]:
         # #ASSUME (external resource): per-row resolve_security/resolve_account
         # queries are acceptable at the expected scale (thousands of broker rows).
         # Unlike the consolidated rows, securities/accounts are not pre-fetched.
@@ -357,10 +396,14 @@ class TransactionNormalizer:
         if security_id is None:
             notes.append("unresolved-security")
         if not mapped_account:
-            notes.append("unmapped-account")
+            # Distinguish a real-but-unseeded account (fix: seed account_mappings)
+            # from a row with no account number at all (an upstream extraction gap).
+            notes.append(
+                "unmapped-account"
+                if mapped.account_number
+                else "missing-account-number"
+            )
         has_issues = security_id is None or not mapped_account
-        if has_issues:
-            summary.flagged += 1
 
         target = existing.get(l1.id)
         if target is None:
@@ -390,4 +433,4 @@ class TransactionNormalizer:
         target.has_validation_issues = has_issues
         target.quality_score = Decimal("0.5") if has_issues else Decimal("1.00")
         target.validation_notes = "; ".join(notes) if notes else None
-        summary.normalized += 1
+        return target, has_issues
