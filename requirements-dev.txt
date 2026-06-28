@@ -325,5 +325,5 @@ virtualenv==21.5.1
     #   pre-commit
 wcwidth==0.8.1
     # via prompt-toolkit
-wrapt==2.2.1
+wrapt==2.2.2
     # via deprecated
