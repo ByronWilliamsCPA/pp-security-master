@@ -201,7 +201,7 @@ pydantic-core==2.47.0
     # via pydantic
 pydantic-settings==2.14.2
     # via pp-security-master
-pydoclint==0.8.6
+pydoclint==0.8.7
 pygments==2.20.0
     # via
     #   ipython
