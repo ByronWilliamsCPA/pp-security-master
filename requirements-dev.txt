@@ -300,7 +300,7 @@ traitlets==5.15.1
     # via
     #   ipython
     #   matplotlib-inline
-typing-extensions==4.15.0
+typing-extensions==4.16.0
     # via
     #   alembic
     #   anyio
