@@ -323,7 +323,7 @@ virtualenv==21.5.1
     # via
     #   nox
     #   pre-commit
-wcwidth==0.8.1
+wcwidth==0.8.2
     # via prompt-toolkit
 wrapt==2.2.2
     # via deprecated
