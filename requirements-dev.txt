@@ -235,7 +235,7 @@ pytest-timeout==2.4.0
 pytest-xdist==3.8.0
 python-dateutil==2.9.0.post0
     # via pp-security-master
-python-discovery==1.4.2
+python-discovery==1.4.3
     # via virtualenv
 python-dotenv==1.2.2
     # via
