@@ -10,7 +10,7 @@ argcomplete==3.7.0
     # via
     #   commitizen
     #   nox
-asttokens==3.0.1
+asttokens==3.0.2
     # via stack-data
 attrs==26.1.0
     # via
