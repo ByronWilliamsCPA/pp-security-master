@@ -49,7 +49,7 @@ colorama==0.4.6
     #   interrogate
     #   ipython
     #   pytest
-colorlog==6.10.1
+colorlog==6.11.0
     # via nox
 commitizen==4.16.4
 coverage==7.15.1
