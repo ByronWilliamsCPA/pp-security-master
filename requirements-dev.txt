@@ -52,7 +52,7 @@ colorama==0.4.6
 colorlog==6.11.0
     # via nox
 commitizen==4.16.5
-coverage==7.15.1
+coverage==7.15.2
     # via pytest-cov
 cryptography==49.0.0
     # via pp-security-master
