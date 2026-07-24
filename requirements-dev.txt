@@ -294,7 +294,7 @@ tomli==2.4.1
     #   pip-audit
 tomli-w==1.2.0
     # via pip-audit
-tomlkit==0.15.0
+tomlkit==0.15.1
     # via commitizen
 traitlets==5.15.1
     # via
