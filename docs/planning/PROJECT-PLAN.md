@@ -283,7 +283,7 @@ add security, SonarCloud, and coverage workflows.
 **Deliverables**:
 
 - Commit SHAs resolved for all actions in use
-- `codeql.yml`: SHAs pinned, `harden-runner` added
+- ~~`codeql.yml`: SHAs pinned, `harden-runner` added~~ CANCELLED 2026-09: `codeql.yml` removed. GitHub now bills Advanced Security / Code Security, so CodeQL code scanning and SARIF ingestion into the Security tab no longer function; see `CHANGELOG.md`.
 - `scorecard.yml`: SHAs pinned
 - `renovate-auto-merge.yml`: SHAs pinned
 - `ci.yml`: replaced with thin caller to

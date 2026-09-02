@@ -169,7 +169,7 @@ with a thin caller to the org reusable workflow, and add security/SonarCloud/cov
 ### Deliverables
 
 - [ ] Commit SHAs resolved for all actions in use (Task 14)
-- [ ] `codeql.yml`: SHAs pinned, `harden-runner` added (Task 15)
+- [x] ~~`codeql.yml`: SHAs pinned, `harden-runner` added (Task 15)~~ CANCELLED 2026-09: `codeql.yml` removed. GitHub now bills Advanced Security / Code Security, so CodeQL code scanning and SARIF ingestion into the Security tab no longer function; see `CHANGELOG.md`.
 - [ ] `scorecard.yml`: SHAs pinned (Task 16)
 - [ ] `renovate-auto-merge.yml`: SHAs pinned (Task 17)
 - [ ] `ci.yml`: replaced with thin caller to `ByronWilliamsCPA/.github/.github/workflows/python-ci.yml@main` (Task 18)

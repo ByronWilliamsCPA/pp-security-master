@@ -2,6 +2,20 @@
 
 This document outlines the repository rulesets configuration for pp-security-master, based on successful patterns from PromptCraft.
 
+> **Note (2026-09):** `.github/workflows/codeql.yml` and its config
+> (`.github/codeql/codeql-config.yml`) were removed: GitHub now bills
+> Advanced Security / Code Security, so CodeQL code scanning and SARIF
+> ingestion into the Security tab no longer function. Every reference to
+> `CodeQL Security Analysis / Analyze (python)` below is stale. Live
+> required status checks (verified via `gh api
+> repos/ByronWilliamsCPA/pp-security-master/branches/main/protection`) are
+> `CI Gate`, `Security Gate Validation`, `Dependency & Standards
+> Validation`, and `Check REUSE Compliance`; CodeQL was not among them, so
+> this removal does not block merges. This document also predates the
+> current CI setup in other respects (it still describes Poetry and
+> PostgreSQL integration tests); a full refresh is out of scope for this
+> change.
+
 ## Current Ruleset Requirements
 
 ### Branch Protection (Main Branch)

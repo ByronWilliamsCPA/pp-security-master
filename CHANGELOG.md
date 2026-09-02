@@ -57,6 +57,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `try/except defusedxml.DefusedXmlException` around `defused_minidom.parseString()` in `_prettify_xml` to convert XML security violations to `ValueError` instead of propagating unhandled
 - Correct `qlty.toml` format and add path exclusions for qlty 0.612.0 compatibility
 
+### Removed
+
+- ci(security): remove `codeql.yml` and its config
+  (`.github/codeql/codeql-config.yml`); GitHub now bills Advanced Security
+  (Code Security), so CodeQL code scanning and SARIF ingestion into the
+  Security tab no longer function. `scorecard.yml`'s
+  `github/codeql-action/upload-sarif` step is also removed since the
+  workflow's existing `actions/upload-artifact` step already archives the
+  same `results.sarif` file; the `security-events: write` permission on
+  that job is dropped as it had no other consumer.
+  `security-analysis.yml` already passed `run-codeql: false` to the
+  shared org reusable workflow, so no follow-up input change is needed
+  there.
+
 ### Security
 
 - Reassess `docs/known-vulnerabilities.md` (review date 2026-06-19, next due 2026-08-18): confirm `uv run pip-audit` reports no known vulnerabilities after the `msgpack` 1.2.1 / `pydantic-settings` 2.14.2 patches (GHSA-6v7p-g79w-8964, GHSA-4xgf-cpjx-pc3j); refresh the four pip/py advisories, which are no longer surfaced by pip-audit and remain documented as accepted tooling/transitive exceptions

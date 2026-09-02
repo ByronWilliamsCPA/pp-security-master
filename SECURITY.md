@@ -54,7 +54,7 @@ Primary security concerns and mitigations:
 
 ## Security Practices
 
-- **Static Analysis** with CodeQL, Ruff, and Bandit
+- **Static Analysis** with Ruff and Bandit (CodeQL removed 2026-09: GitHub now bills Advanced Security / Code Security; see CHANGELOG)
 - **Dependency Scanning** with pip-audit on every CI run
 - **Secrets Detection** with GitGuardian and GitHub secret scanning on every push
 - **Pinned GitHub Actions** using immutable commit SHAs
