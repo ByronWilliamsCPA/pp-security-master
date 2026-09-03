@@ -54,7 +54,7 @@ colorlog==6.11.0
 commitizen==4.16.5
 coverage==7.15.2
     # via pytest-cov
-cryptography==49.0.0
+cryptography==50.0.1
     # via pp-security-master
 cyclonedx-python-lib==11.11.0
     # via pip-audit
@@ -155,7 +155,7 @@ parso==0.8.7
     # via jedi
 pexpect==4.9.0 ; sys_platform != 'emscripten' and sys_platform != 'win32'
     # via ipython
-pip==26.1.2
+pip==26.2.1
     # via pip-api
 pip-api==0.0.34
     # via pip-audit
