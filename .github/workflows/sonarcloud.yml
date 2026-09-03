@@ -15,7 +15,7 @@ permissions:
 jobs:
   sonarcloud:
     name: SonarCloud Analysis
-    uses: ByronWilliamsCPA/.github/.github/workflows/python-sonarcloud.yml@58cb18497bb2e54a22c6adb47bdaca4d7f615eee  # v2.2.0
+    uses: ByronWilliamsCPA/.github/.github/workflows/python-sonarcloud.yml@50e3c9783a7f43613651d5c5688d99cb748a8a22  # v9.1.1
     # The reusable workflow declares sonar-organization and sonar-project-key as
     # required inputs; omitting them fails the workflow at startup. Values mirror
     # sonar-project.properties (still bound to the williaby org pending the
@@ -23,5 +23,10 @@ jobs:
     with:
       sonar-organization: williaby
       sonar-project-key: williaby_pp-security-master
+      # requires-python is ">=3.11" with no ceiling, so this is capped at the newest version
+      # the org supports rather than left open. SonarPython gates version-specific rules on
+      # ALL declared versions, so the previous effective value of 3.12 (the reusable
+      # workflow's python-version default) raised 3.12+ rules against 3.11-compatible code.
+      sonar-python-version: '3.11,3.12,3.13,3.14'
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
