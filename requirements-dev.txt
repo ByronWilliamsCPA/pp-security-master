@@ -172,7 +172,7 @@ pluggy==1.6.0
     #   pytest
     #   pytest-cov
 pre-commit==4.6.2
-prompt-toolkit==3.0.51
+prompt-toolkit==3.0.53
     # via
     #   commitizen
     #   ipython
