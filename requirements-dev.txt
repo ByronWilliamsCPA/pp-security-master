@@ -237,7 +237,7 @@ python-dateutil==2.9.0.post0
     # via pp-security-master
 python-discovery==1.4.2
     # via virtualenv
-python-dotenv==1.2.2
+python-dotenv==1.2.3
     # via
     #   pp-security-master
     #   pydantic-settings
