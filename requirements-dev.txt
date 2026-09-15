@@ -133,7 +133,7 @@ matplotlib-inline==0.2.2
     # via ipython
 mdurl==0.1.2
     # via markdown-it-py
-msgpack==1.2.1
+msgpack==1.2.2
     # via cachecontrol
 nodeenv==1.10.0
     # via pre-commit
