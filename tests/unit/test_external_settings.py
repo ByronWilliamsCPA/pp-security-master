@@ -53,3 +53,25 @@ def test_accepts_gitignored_cache_paths() -> None:
 def test_rejects_out_of_range_bounds() -> None:
     with pytest.raises(ValueError, match="max_retries"):
         ExternalAPISettings(_env_file=None, max_retries=99)
+
+
+def test_ibkr_flex_token_is_secret() -> None:
+    settings = ExternalAPISettings(
+        _env_file=None,
+        ibkr_flex_token="123456789012345678901234",  # noqa: S106  # fake token
+    )
+    assert settings.ibkr_flex_token is not None
+    assert "1234567890" not in repr(settings)
+    assert settings.ibkr_flex_token.get_secret_value().startswith("1234")
+
+
+def test_rejects_non_https_ibkr_flex_url() -> None:
+    with pytest.raises(ValueError, match="https"):
+        ExternalAPISettings(
+            _env_file=None, ibkr_flex_send_request_url="http://insecure.example"
+        )
+
+
+def test_rejects_non_gitignored_ibkr_raw_dir() -> None:
+    with pytest.raises(ValueError, match="gitignored"):
+        ExternalAPISettings(_env_file=None, ibkr_flex_raw_dir=Path("statements/ibkr"))

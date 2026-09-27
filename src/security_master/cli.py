@@ -6,6 +6,8 @@ Exposes these commands under the ``pp-master`` group:
   backup in and out of the database.
 - ``import-broker``: ingest a broker export (currently IBKR Flex Query XML) into
   the transactions store.
+- ``fetch-ibkr-flex``: download a Flex Query statement from the IBKR Flex Web
+  Service, archive it under ``data/raw/ibkr/``, and import it.
 - ``classify``: a sub-group for Tier-4 manual classification (gics-sector,
   sleeve, cash, crypto-seed) that locks a row against automated overwrite.
 
@@ -15,11 +17,13 @@ Database connection details are read from the environment (see
 
 from __future__ import annotations
 
+from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
+import httpx
 
 from security_master.classifier import (
     AssignmentKind,
@@ -34,6 +38,13 @@ from security_master.classifier.taxonomy_lookup import (
     resolve_brx_plus_sleeve,
     resolve_gics_sector,
 )
+from security_master.external.ibkr_flex_web import (
+    FlexStatementRequest,
+    IBKRFlexWebClient,
+    IBKRFlexWebError,
+    archive_statement,
+)
+from security_master.external.settings import ExternalAPISettings
 from security_master.extractor import (
     IBKRFlexImportService,
     IBKRPositionsImportService,
@@ -60,6 +71,14 @@ if TYPE_CHECKING:
 
 # Institutions whose broker files import-broker can ingest today.
 _SUPPORTED_INSTITUTIONS = ("ibkr",)
+
+# IBKR codes that mean the operator must fix configuration, with the fix.
+_FLEX_ERROR_HINTS = {
+    "1012": "The Flex token has expired; generate a new one in IBKR Settings.",
+    "1013": "IBKR rejected this IP; check the token's IP restriction.",
+    "1014": "The Flex Query ID is invalid; check IBKR_FLEX_QUERY_ID.",
+    "1015": "The Flex token is invalid; check IBKR_FLEX_TOKEN.",
+}
 
 
 @click.group()
@@ -187,6 +206,194 @@ def import_broker(
         f"(skipped {summary.skipped} existing) "
         f"from {file} as batch {summary.import_batch_id}."
     )
+
+
+def _build_flex_client(settings: ExternalAPISettings) -> IBKRFlexWebClient:
+    """Build the Flex Web Service client from settings.
+
+    Args:
+        settings: Loaded external-API settings.
+
+    Returns:
+        A ready client; the caller closes it.
+
+    Raises:
+        click.ClickException: If no token is configured.
+    """
+    if settings.ibkr_flex_token is None:
+        msg = "IBKR_FLEX_TOKEN is not set; add the Flex Web Service token to .env."
+        raise click.ClickException(msg)
+    return IBKRFlexWebClient(
+        token=settings.ibkr_flex_token.get_secret_value(),
+        http=httpx.Client(timeout=httpx.Timeout(60.0)),
+        send_request_url=settings.ibkr_flex_send_request_url,
+        poll_interval_seconds=settings.ibkr_flex_poll_interval_seconds,
+        max_polls=settings.ibkr_flex_max_polls,
+        max_retries=settings.max_retries,
+    )
+
+
+def _fetch_flex_xml(
+    settings: ExternalAPISettings, query_id: str, request: FlexStatementRequest
+) -> str:
+    """Download one statement, converting service errors to CLI errors.
+
+    Args:
+        settings: Loaded external-API settings.
+        query_id: Flex Query ID.
+        request: Date-range override (may be empty).
+
+    Returns:
+        The statement XML.
+
+    Raises:
+        click.ClickException: On any Flex Web Service failure.
+    """
+    client = _build_flex_client(settings)
+    try:
+        return client.fetch_statement(query_id, request)
+    except IBKRFlexWebError as exc:
+        hint = _FLEX_ERROR_HINTS.get(exc.code or "")
+        msg = f"{exc} {hint}" if hint else str(exc)
+        raise click.ClickException(msg) from exc
+    finally:
+        client.close()
+
+
+def _import_flex_xml(
+    xml: str, source_file: str, database_url: str | None, *, create_schema: bool
+) -> None:
+    """Import a fetched statement's records and position snapshot.
+
+    Args:
+        xml: Statement XML.
+        source_file: Archived file path recorded on each row.
+        database_url: Optional database URL override.
+        create_schema: Create tables before importing.
+    """
+    engine = create_db_engine(database_url)
+    if create_schema:
+        create_tables(engine)
+    session = get_session_factory(engine)()
+    try:
+        summary = IBKRFlexImportService(session).import_from_string(
+            xml, source_file=source_file
+        )
+        click.echo(
+            f"Imported {summary.trades} trade(s), "
+            f"{summary.cash_transactions} cash transaction(s), "
+            f"{summary.corporate_actions} corporate action(s), "
+            f"{summary.transfers} transfer(s) "
+            f"(skipped {summary.skipped} existing) as batch "
+            f"{summary.import_batch_id}."
+        )
+        # A query may include the OpenPosition section; import it when present
+        # so a single scheduled fetch also refreshes the holdings snapshot.
+        if parse_ibkr_open_positions(xml):
+            positions = IBKRPositionsImportService(session).import_from_string(
+                xml, source_file=source_file
+            )
+            click.echo(
+                f"Imported {positions.positions} position snapshot row(s) "
+                f"(skipped {positions.skipped} existing)."
+            )
+    finally:
+        session.close()
+        engine.dispose()
+
+
+@app.command("fetch-ibkr-flex")
+@click.option(
+    "--query-id",
+    default=None,
+    help="Flex Query ID. Defaults to IBKR_FLEX_QUERY_ID from .env.",
+)
+@click.option(
+    "--from-date",
+    type=click.DateTime(formats=["%Y-%m-%d"]),
+    default=None,
+    help="Override start date (YYYY-MM-DD); requires --to-date.",
+)
+@click.option(
+    "--to-date",
+    type=click.DateTime(formats=["%Y-%m-%d"]),
+    default=None,
+    help="Override end date (YYYY-MM-DD); requires --from-date.",
+)
+@click.option(
+    "--period-days",
+    type=int,
+    default=None,
+    help="Override look-back in days (1-365); excludes --from-date/--to-date.",
+)
+@click.option(
+    "--import/--no-import",
+    "do_import",
+    default=True,
+    show_default=True,
+    help="Import the statement after archiving it.",
+)
+@click.option(
+    "--database-url",
+    default=None,
+    help="Override database URL. Defaults to DB_* environment variables.",
+)
+@click.option(
+    "--create-schema/--no-create-schema",
+    default=False,
+    show_default=True,
+    help="Create tables before importing (useful for a fresh database).",
+)
+def fetch_ibkr_flex(  # one parameter per CLI option
+    query_id: str | None,
+    from_date: datetime | None,
+    to_date: datetime | None,
+    period_days: int | None,
+    *,
+    do_import: bool,
+    database_url: str | None,
+    create_schema: bool,
+) -> None:
+    """Download an IBKR Flex Query statement and import it.
+
+    The statement is archived to IBKR_FLEX_RAW_DIR/YYYYMMDD/ before import, so
+    the raw file trail matches a manual export. Re-running is safe: imports
+    skip records that are already stored.
+    """
+    settings = ExternalAPISettings()
+    resolved_query = query_id or settings.ibkr_flex_query_id
+    if not resolved_query:
+        msg = "No Flex Query ID; pass --query-id or set IBKR_FLEX_QUERY_ID."
+        raise click.UsageError(msg)
+    try:
+        request = FlexStatementRequest(
+            from_date=_as_date(from_date),
+            to_date=_as_date(to_date),
+            period_days=period_days,
+        )
+    except ValueError as exc:
+        raise click.UsageError(str(exc)) from exc
+
+    xml = _fetch_flex_xml(settings, resolved_query, request)
+    stamp = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%S")
+    path = archive_statement(xml, settings.ibkr_flex_raw_dir, resolved_query, stamp)
+    click.echo(f"Saved statement to {path}.")
+
+    if not do_import:
+        return
+    _import_flex_xml(xml, str(path), database_url, create_schema=create_schema)
+
+
+def _as_date(value: datetime | None) -> date | None:
+    """Drop the time part Click adds to a parsed date option.
+
+    Args:
+        value: Parsed option value.
+
+    Returns:
+        The date, or ``None``.
+    """
+    return value.date() if value is not None else None
 
 
 def _find_security(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # #ASSUME (external resource): the OpenFIGI free tier (anonymous or keyed) is
@@ -13,6 +13,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 _DEFAULT_OPENFIGI_URL = "https://api.openfigi.com/v3/mapping"
 _DEFAULT_SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 _DEFAULT_SEC_SUBMISSIONS_URL = "https://data.sec.gov/submissions"
+_DEFAULT_IBKR_FLEX_URL = (
+    "https://ndcdyn.interactivebrokers.com/AccountManagement/FlexWebService/SendRequest"
+)
 
 
 class ExternalAPISettings(BaseSettings):
@@ -29,6 +32,12 @@ class ExternalAPISettings(BaseSettings):
         cache_ttl_days: Cache entry lifetime in days.
         min_request_interval_seconds: Minimum spacing between calls per provider.
         max_retries: Retry attempts on 429/5xx/transport errors.
+        ibkr_flex_token: IBKR Flex Web Service token (secret).
+        ibkr_flex_query_id: Default Flex Query ID for ``fetch-ibkr-flex``.
+        ibkr_flex_send_request_url: Flex Web Service SendRequest endpoint.
+        ibkr_flex_raw_dir: Where fetched statements are archived.
+        ibkr_flex_poll_interval_seconds: Wait between statement polls.
+        ibkr_flex_max_polls: Statement polls before giving up.
     """
 
     model_config = SettingsConfigDict(
@@ -50,8 +59,24 @@ class ExternalAPISettings(BaseSettings):
     cache_ttl_days: int = Field(default=30, gt=0, le=3650)
     min_request_interval_seconds: float = Field(default=0.2, ge=0)
     max_retries: int = Field(default=4, ge=0, le=10)
+    # #CRITICAL (security): the Flex token grants read access to account
+    # statements. It lives in .env only and must never be committed or logged.
+    # #ASSUME (external resource): IBKR tokens expire after the lifetime chosen
+    # when generating them. #VERIFY: fetch-ibkr-flex fails loudly with code 1012
+    # on an expired token; rotate it under Settings > Flex Web Service.
+    ibkr_flex_token: SecretStr | None = None
+    ibkr_flex_query_id: str | None = None
+    ibkr_flex_send_request_url: str = _DEFAULT_IBKR_FLEX_URL
+    ibkr_flex_raw_dir: Path = Path("data/raw/ibkr")
+    ibkr_flex_poll_interval_seconds: float = Field(default=5.0, ge=0, le=60)
+    ibkr_flex_max_polls: int = Field(default=20, ge=1, le=120)
 
-    @field_validator("openfigi_base_url", "sec_tickers_url", "sec_submissions_url")
+    @field_validator(
+        "openfigi_base_url",
+        "sec_tickers_url",
+        "sec_submissions_url",
+        "ibkr_flex_send_request_url",
+    )
     @classmethod
     def _require_https(cls, value: str) -> str:
         """Require an https URL so the API key is never sent in cleartext.
@@ -69,6 +94,28 @@ class ExternalAPISettings(BaseSettings):
             msg = f"expected an https:// URL, got {value!r}"
             raise ValueError(msg)
         return value
+
+    @field_validator("ibkr_flex_raw_dir")
+    @classmethod
+    def _raw_dir_must_be_gitignored(cls, value: Path) -> Path:
+        """Keep archived statements (account data) out of git.
+
+        Args:
+            value: The configured raw-statement directory.
+
+        Returns:
+            The validated path.
+
+        Raises:
+            ValueError: If the path is not under a gitignored ``data/`` directory.
+        """
+        if "data" in value.parts:
+            return value
+        msg = (
+            f"ibkr_flex_raw_dir {value} is not under a gitignored 'data/' "
+            "directory; statements hold account data and must not be committed."
+        )
+        raise ValueError(msg)
 
     @field_validator("cache_path")
     @classmethod
