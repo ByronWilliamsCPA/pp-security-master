@@ -1,6 +1,7 @@
 """Public re-exports for the storage layer: ORM models and the declarative base."""
 
 from .account_models import AccountMapping
+from .balance_models import AccountBalance
 from .entity import (
     ENTITY_TYPE_TAX_FORMS,
     Client,
@@ -35,6 +36,7 @@ from .transaction_normalizer import (
 __all__ = [
     "DEFAULT_TOLERANCE",
     "ENTITY_TYPE_TAX_FORMS",
+    "AccountBalance",
     "AccountMapping",
     "Base",
     "Client",

@@ -102,6 +102,10 @@ Thumbs.db
 .env.*
 !.env.example
 
+# Real account registry seed is private and lives outside the repo; ignore strays
+account_registry*.yaml
+!account_registry.example.yaml
+
 # Git worktrees (created by git worktree add)
 .worktrees/
 
