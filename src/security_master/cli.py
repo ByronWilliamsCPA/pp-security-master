@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 
 import click
 
+from security_master.balances.cli import balance, nightly_totals
 from security_master.classifier import (
     AssignmentKind,
     ClassificationLockedError,
@@ -396,6 +397,8 @@ def classify_crypto_seed(classified_by: str, *, force: bool) -> None:
 
 
 app.add_command(classify)
+app.add_command(balance)
+app.add_command(nightly_totals)
 
 
 @app.command("reconcile-positions")
