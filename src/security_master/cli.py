@@ -183,7 +183,8 @@ def import_broker(
         f"Imported {summary.trades} trade(s), "
         f"{summary.cash_transactions} cash transaction(s), "
         f"{summary.corporate_actions} corporate action(s), "
-        f"{summary.transfers} transfer(s) "
+        f"{summary.transfers} transfer(s), "
+        f"{summary.cash_report_rows} cash report row(s) "
         f"(skipped {summary.skipped} existing) "
         f"from {file} as batch {summary.import_batch_id}."
     )
