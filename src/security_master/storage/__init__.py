@@ -15,7 +15,11 @@ from .models import (
     KuberaSheet,
     SecurityMaster,
 )
-from .position_models import InteractiveBrokersOpenPosition, PositionSnapshotBase
+from .position_models import (
+    InteractiveBrokersCashReport,
+    InteractiveBrokersOpenPosition,
+    PositionSnapshotBase,
+)
 from .position_reconciliation import (
     DEFAULT_TOLERANCE,
     ReconciliationRow,
@@ -35,6 +39,7 @@ __all__ = [
     "Base",
     "Client",
     "HoldingComparison",
+    "InteractiveBrokersCashReport",
     "InteractiveBrokersOpenPosition",
     "KuberaHolding",
     "KuberaSection",

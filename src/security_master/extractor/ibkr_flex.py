@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 else:
     import defusedxml.ElementTree as ET  # noqa: N817  # safe parser at runtime
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
@@ -35,13 +35,17 @@ from security_master.extractor._flex_common import (
     parse_flex_date,
 )
 from security_master.extractor.ibkr_flex_records import (
+    ParsedCashReportRow,
     ParsedCashTransaction,
     ParsedCorporateAction,
     ParsedTransfer,
     cash_from_element,
+    cash_report_from_element,
     corp_action_from_element,
+    is_base_summary,
     transfer_from_element,
 )
+from security_master.storage.position_models import InteractiveBrokersCashReport
 from security_master.storage.transaction_models import InteractiveBrokersTransaction
 
 # Account name is a constant: the Flex Trade record has no attribute that
@@ -106,6 +110,8 @@ class ImportSummary:
         cash_transactions: Number of cash transactions newly inserted this run.
         corporate_actions: Number of corporate actions newly inserted this run.
         transfers: Number of transfers newly inserted this run.
+        cash_report_rows: Number of CashReport ending-cash rows newly inserted
+            this run.
         skipped: Number of records skipped because their id already existed
             in the database (idempotency).
         source_file: Path string recorded as the source for inserted rows,
@@ -117,6 +123,7 @@ class ImportSummary:
     cash_transactions: int = 0
     corporate_actions: int = 0
     transfers: int = 0
+    cash_report_rows: int = 0
     skipped: int = 0
     source_file: str | None = None
 
@@ -225,6 +232,7 @@ class IBKRFlexRecords:
     cash_transactions: list[ParsedCashTransaction]
     corporate_actions: list[ParsedCorporateAction]
     transfers: list[ParsedTransfer]
+    cash_report: list[ParsedCashReportRow] = field(default_factory=list)
 
 
 def parse_ibkr_flex_records(xml_content: str) -> IBKRFlexRecords:
@@ -235,7 +243,8 @@ def parse_ibkr_flex_records(xml_content: str) -> IBKRFlexRecords:
 
     Returns:
         An :class:`IBKRFlexRecords` with trades, cash transactions, corporate
-        actions, and transfers, each in document order.
+        actions, transfers, and CashReport ending-cash rows (the base-currency
+        roll-up row is dropped), each in document order.
     """
     root = ET.fromstring(xml_content)
     return IBKRFlexRecords(
@@ -247,6 +256,11 @@ def parse_ibkr_flex_records(xml_content: str) -> IBKRFlexRecords:
             corp_action_from_element(e) for e in root.findall(".//CorporateAction")
         ],
         transfers=[transfer_from_element(e) for e in root.findall(".//Transfer")],
+        cash_report=[
+            cash_report_from_element(e)
+            for e in root.findall(".//CashReportCurrency")
+            if not is_base_summary(e)
+        ],
     )
 
 
@@ -548,8 +562,59 @@ class IBKRFlexImportService:
             self.session.add(self._transfer_orm(transfer, batch_id, source_file))
             summary.transfers += 1
 
+        self._persist_cash_report(records.cash_report, batch_id, source_file, summary)
+
         self.session.commit()
         return summary
+
+    def _persist_cash_report(
+        self,
+        rows: list[ParsedCashReportRow],
+        batch_id: str,
+        source_file: str | None,
+        summary: ImportSummary,
+    ) -> None:
+        """Stage CashReport rows, deduped on (account, report_date, currency).
+
+        Args:
+            rows: Parsed CashReport rows from one document.
+            batch_id: Import batch identifier for this run.
+            source_file: Source file path to stamp on inserted rows, or None.
+            summary: Run summary updated in place with inserted/skipped counts.
+        """
+        if not rows:
+            return
+        existing = self.session.query(
+            InteractiveBrokersCashReport.account_number,
+            InteractiveBrokersCashReport.report_date,
+            InteractiveBrokersCashReport.currency,
+        ).filter(
+            InteractiveBrokersCashReport.account_number.in_(
+                {r.account_number for r in rows}
+            ),
+            InteractiveBrokersCashReport.report_date.in_({r.report_date for r in rows}),
+        )
+        seen = {(r[0], r[1], r[2]) for r in existing.all()}
+        # #CRITICAL (data integrity): (account, report_date, currency) is the
+        # idempotency key; a duplicate row would double count cash in totals.
+        # #VERIFY: test_cash_report_import_is_idempotent.
+        for row in rows:
+            key = (row.account_number, row.report_date, row.currency)
+            if key in seen:
+                summary.skipped += 1
+                continue
+            seen.add(key)
+            self.session.add(
+                InteractiveBrokersCashReport(
+                    account_number=row.account_number,
+                    report_date=row.report_date,
+                    currency=row.currency,
+                    ending_cash=row.ending_cash,
+                    import_batch_id=batch_id,
+                    source_file=source_file,
+                )
+            )
+            summary.cash_report_rows += 1
 
     def import_from_string(
         self,
