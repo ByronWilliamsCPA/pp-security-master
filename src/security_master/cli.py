@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 
 import click
 
+from security_master.balances.cli import balance, nightly_totals
 from security_master.classifier import (
     AssignmentKind,
     ClassificationLockedError,
@@ -183,7 +184,8 @@ def import_broker(
         f"Imported {summary.trades} trade(s), "
         f"{summary.cash_transactions} cash transaction(s), "
         f"{summary.corporate_actions} corporate action(s), "
-        f"{summary.transfers} transfer(s) "
+        f"{summary.transfers} transfer(s), "
+        f"{summary.cash_report_rows} cash report row(s) "
         f"(skipped {summary.skipped} existing) "
         f"from {file} as batch {summary.import_batch_id}."
     )
@@ -395,6 +397,8 @@ def classify_crypto_seed(classified_by: str, *, force: bool) -> None:
 
 
 app.add_command(classify)
+app.add_command(balance)
+app.add_command(nightly_totals)
 
 
 @app.command("reconcile-positions")
