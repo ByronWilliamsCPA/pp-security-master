@@ -165,7 +165,6 @@ pip-requirements-parser==32.0.1
 platformdirs==4.10.0
     # via
     #   pip-audit
-    #   python-discovery
     #   virtualenv
 pluggy==1.6.0
     # via
@@ -235,7 +234,7 @@ pytest-timeout==2.4.0
 pytest-xdist==3.8.0
 python-dateutil==2.9.0.post0
     # via pp-security-master
-python-discovery==1.4.2
+python-discovery==1.6.1
     # via virtualenv
 python-dotenv==1.2.3
     # via
@@ -317,9 +316,9 @@ typing-inspection==0.4.4
     #   pydantic-settings
 tzdata==2026.2 ; sys_platform == 'win32'
     # via faker
-urllib3==2.7.0
+urllib3==2.8.0
     # via requests
-virtualenv==21.5.1
+virtualenv==21.7.13
     # via
     #   nox
     #   pre-commit
