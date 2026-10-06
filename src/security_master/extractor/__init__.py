@@ -11,6 +11,7 @@ from .ibkr_flex import (
     ParsedTrade,
     parse_ibkr_flex,
 )
+from .ibkr_flex_records import ParsedCashReportRow
 from .ibkr_positions import (
     IBKRPositionsImportService,
     ParsedOpenPosition,
@@ -22,6 +23,7 @@ __all__ = [
     "IBKRFlexImportService",
     "IBKRPositionsImportService",
     "ImportSummary",
+    "ParsedCashReportRow",
     "ParsedOpenPosition",
     "ParsedTrade",
     "PositionImportSummary",

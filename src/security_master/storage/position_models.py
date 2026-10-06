@@ -9,7 +9,7 @@ crypto snapshot tables are siblings.
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, Numeric, String, UniqueConstraint, func
+from sqlalchemy import Date, DateTime, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .models import Base
@@ -99,6 +99,15 @@ class InteractiveBrokersOpenPosition(PositionSnapshotBase):
         )
 
 
+def _utc_now_naive() -> datetime:
+    """Return the current UTC time without tzinfo (the storage convention).
+
+    Returns:
+        A naive datetime in UTC, matching the other snapshot tables.
+    """
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
 class InteractiveBrokersCashReport(Base):
     """Interactive Brokers Flex Query <CashReportCurrency> ending-cash rows.
 
@@ -129,8 +138,9 @@ class InteractiveBrokersCashReport(Base):
 
     import_batch_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     source_file: Mapped[str | None] = mapped_column(String(255))
+    # Naive UTC, set by the ORM like the other snapshot tables' created_at.
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.now()
+        DateTime, nullable=False, default=_utc_now_naive
     )
 
     def __repr__(self) -> str:

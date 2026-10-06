@@ -1,13 +1,16 @@
-"""Interactive Brokers Flex Query trade extractor and persistence service.
+"""Interactive Brokers Flex Query extractor and persistence service.
 
 Parses IBKR Flex Query XML (FlexQueryResponse > FlexStatements >
-FlexStatement > Trades > Trade) into mapped :class:`ParsedTrade` records and
-persists them to the ``transactions_interactive_brokers`` table.
+FlexStatement > Trades > Trade, plus the CashTransaction, CorporateAction,
+Transfer, and CashReport sections) into typed records. Trades and the other
+transaction records persist to ``transactions_interactive_brokers``; CashReport
+ending cash persists to ``ibkr_cash_report``.
 
 The parse stage is a pure function (no database, no network) so it can be
 unit-tested against a fixture without infrastructure. The persistence stage
-is idempotent: ``trade_id`` is unique, and trades whose ``trade_id`` already
-exists in the database are skipped rather than re-inserted.
+is idempotent: trades dedupe on ``trade_id``, the other transaction records on
+``transactionID``, and CashReport rows on (account, report date, currency),
+where a restated amount for an existing key updates the row in place.
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ if TYPE_CHECKING:
 else:
     import defusedxml.ElementTree as ET  # noqa: N817  # safe parser at runtime
 
+import logging
 from dataclasses import dataclass, field
 from decimal import Decimal
 from pathlib import Path
@@ -47,6 +51,8 @@ from security_master.extractor.ibkr_flex_records import (
 )
 from security_master.storage.position_models import InteractiveBrokersCashReport
 from security_master.storage.transaction_models import InteractiveBrokersTransaction
+
+_LOGGER = logging.getLogger(__name__)
 
 # Account name is a constant: the Flex Trade record has no attribute that
 # names the institution, so every IBKR row is stamped with this label.
@@ -112,8 +118,11 @@ class ImportSummary:
         transfers: Number of transfers newly inserted this run.
         cash_report_rows: Number of CashReport ending-cash rows newly inserted
             this run.
-        skipped: Number of records skipped because their id already existed
-            in the database (idempotency).
+        cash_report_updated: Number of existing CashReport rows whose ending
+            cash was restated by this file and updated in place.
+        skipped: Number of records skipped because their natural key (trade
+            id, transaction id, or CashReport account/date/currency) already
+            existed with the same content (idempotency).
         source_file: Path string recorded as the source for inserted rows,
             or None for string-based imports.
     """
@@ -124,6 +133,7 @@ class ImportSummary:
     corporate_actions: int = 0
     transfers: int = 0
     cash_report_rows: int = 0
+    cash_report_updated: int = 0
     skipped: int = 0
     source_file: str | None = None
 
@@ -504,7 +514,9 @@ class IBKRFlexImportService:
         """Persist every record type from one document under one batch id.
 
         Trades keep the trade_id idempotency path; cash, corporate-action, and
-        transfer rows dedup on the universal transaction_id.
+        transfer rows dedup on the universal transaction_id; CashReport rows
+        dedup on (account, report date, currency) via
+        :meth:`_persist_cash_report`.
 
         Args:
             records: All record types from one parsed Flex document.
@@ -574,47 +586,83 @@ class IBKRFlexImportService:
         source_file: str | None,
         summary: ImportSummary,
     ) -> None:
-        """Stage CashReport rows, deduped on (account, report_date, currency).
+        """Stage CashReport rows, keyed on (account, report_date, currency).
+
+        A key not yet stored is inserted. A key already stored with the same
+        ending cash is skipped. A key already stored with a different ending
+        cash is a restatement (for example an intraday file followed by the
+        final one): the row is updated in place and a reason-coded warning is
+        logged with no amount and no account number, so the nightly totals
+        never run on stale cash.
 
         Args:
             rows: Parsed CashReport rows from one document.
             batch_id: Import batch identifier for this run.
             source_file: Source file path to stamp on inserted rows, or None.
-            summary: Run summary updated in place with inserted/skipped counts.
+            summary: Run summary updated in place with inserted, updated, and
+                skipped counts.
+
+        Raises:
+            ValueError: When one document holds two different amounts for the
+                same account, date, and currency (ambiguous; nothing is
+                written).
         """
         if not rows:
             return
-        existing = self.session.query(
-            InteractiveBrokersCashReport.account_number,
-            InteractiveBrokersCashReport.report_date,
-            InteractiveBrokersCashReport.currency,
-        ).filter(
-            InteractiveBrokersCashReport.account_number.in_(
-                {r.account_number for r in rows}
-            ),
-            InteractiveBrokersCashReport.report_date.in_({r.report_date for r in rows}),
-        )
-        seen = {(r[0], r[1], r[2]) for r in existing.all()}
-        # #CRITICAL (data integrity): (account, report_date, currency) is the
-        # idempotency key; a duplicate row would double count cash in totals.
-        # #VERIFY: test_cash_report_import_is_idempotent.
+        staged: dict[tuple[str, date, str], ParsedCashReportRow] = {}
         for row in rows:
             key = (row.account_number, row.report_date, row.currency)
-            if key in seen:
+            prior = staged.get(key)
+            if prior is not None and prior.ending_cash != row.ending_cash:
+                msg = (
+                    "IBKR CashReport has two different endingCash values for one "
+                    "account, date, and currency"
+                )
+                raise ValueError(msg)
+            if prior is not None:
                 summary.skipped += 1
                 continue
-            seen.add(key)
-            self.session.add(
-                InteractiveBrokersCashReport(
-                    account_number=row.account_number,
-                    report_date=row.report_date,
-                    currency=row.currency,
-                    ending_cash=row.ending_cash,
-                    import_batch_id=batch_id,
-                    source_file=source_file,
-                )
+            staged[key] = row
+        stored = {
+            (r.account_number, r.report_date, r.currency): r
+            for r in self.session.query(InteractiveBrokersCashReport).filter(
+                InteractiveBrokersCashReport.account_number.in_({k[0] for k in staged}),
+                InteractiveBrokersCashReport.report_date.in_({k[1] for k in staged}),
             )
-            summary.cash_report_rows += 1
+        }
+        # #CRITICAL (data integrity): (account, report_date, currency) is the
+        # idempotency key, backed by uq_ibkr_cash_report_acct_date_ccy. Adding a
+        # second row for a stored key would fail that constraint and abort the
+        # whole import, and skipping a restated key would leave stale cash in
+        # the totals. #VERIFY: test_cash_report_import_is_idempotent and
+        # test_restated_cash_report_updates_the_row.
+        for key, row in staged.items():
+            existing = stored.get(key)
+            if existing is None:
+                self.session.add(
+                    InteractiveBrokersCashReport(
+                        account_number=row.account_number,
+                        report_date=row.report_date,
+                        currency=row.currency,
+                        ending_cash=row.ending_cash,
+                        import_batch_id=batch_id,
+                        source_file=source_file,
+                    )
+                )
+                summary.cash_report_rows += 1
+            elif existing.ending_cash != row.ending_cash:
+                existing.ending_cash = row.ending_cash
+                existing.import_batch_id = batch_id
+                existing.source_file = source_file
+                summary.cash_report_updated += 1
+                _LOGGER.warning(
+                    "cash report restated: reason=ending_cash_changed "
+                    "report_date=%s currency=%s",
+                    row.report_date.isoformat(),
+                    row.currency,
+                )
+            else:
+                summary.skipped += 1
 
     def import_from_string(
         self,

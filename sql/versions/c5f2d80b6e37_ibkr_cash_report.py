@@ -31,9 +31,9 @@ def upgrade() -> None:
         sa.Column("ending_cash", sa.Numeric(18, 6), nullable=False),
         sa.Column("import_batch_id", sa.String(50), nullable=False),
         sa.Column("source_file", sa.String(255), nullable=True),
-        sa.Column(
-            "created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()
-        ),
+        # Naive UTC, set by the ORM (no server default, which would use the
+        # database server's local time zone).
+        sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.UniqueConstraint(
             "account_number",
             "report_date",
