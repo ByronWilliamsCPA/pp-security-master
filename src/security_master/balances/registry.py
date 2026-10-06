@@ -52,24 +52,60 @@ class RegistrySettings(BaseSettings):
 
 @dataclass(frozen=True)
 class RegisteredAccount:
-    """One mapped account: key, owning entity, display name, and category."""
+    """One mapped account: key, owning entity, display name, and category.
+
+    The field rules are enforced on construction, so an instance is always
+    valid however it was built.
+    """
 
     account_key: str
     entity_id: uuid.UUID
     display_name: str
     category: str
 
+    def __post_init__(self) -> None:
+        """Validate every field against the account_balances rules.
+
+        Raises:
+            RegistryError: When the key or category violates the field rules,
+                the entity id is the nil UUID, or the display name is blank or
+                longer than 200 characters.
+        """
+        try:
+            validate_account_key(self.account_key)
+            validate_category(self.category)
+        except BalanceRuleError as exc:
+            raise RegistryError(str(exc)) from exc
+        if self.entity_id.int == 0:
+            msg = f"{self.account_key}: entity_id must not be the nil UUID"
+            raise RegistryError(msg)
+        if not self.display_name.strip():
+            msg = f"{self.account_key}: display_name must not be blank"
+            raise RegistryError(msg)
+        if len(self.display_name) > _MAX_DISPLAY_NAME:
+            msg = f"{self.account_key}: display_name is too long"
+            raise RegistryError(msg)
+
 
 class AccountRegistry:
-    """Immutable lookup of mapped accounts by account key."""
+    """Read-only lookup of mapped accounts by account key."""
 
     def __init__(self, accounts: list[RegisteredAccount]) -> None:
-        """Index accounts by key.
+        """Index accounts by key, refusing duplicates.
 
         Args:
-            accounts: Validated accounts with unique keys.
+            accounts: Validated accounts; each key may appear only once.
+
+        Raises:
+            RegistryError: When two accounts share a key.
         """
-        self._by_key = {a.account_key: a for a in accounts}
+        by_key: dict[str, RegisteredAccount] = {}
+        for account in accounts:
+            if account.account_key in by_key:
+                msg = f"duplicate account key in registry: {account.account_key}"
+                raise RegistryError(msg)
+            by_key[account.account_key] = account
+        self._by_key = by_key
 
     def get(self, account_key: str) -> RegisteredAccount | None:
         """Return the account for a key, or None when it is not mapped.
@@ -177,23 +213,15 @@ def _parse_entry(index: int, raw: object) -> RegisteredAccount:
     display_name = _text_field(entry, "display_name", where)
     category_text = _text_field(entry, "category", where)
     try:
-        account_key = validate_account_key(key_text)
-        category = validate_category(category_text)
-    except BalanceRuleError as exc:
-        msg = f"{where}: {exc}"
-        raise RegistryError(msg) from exc
-    try:
         entity_id = uuid.UUID(entity_text)
     except ValueError:
-        msg = f"{where} ({account_key}): entity_id is not a valid UUID"
+        msg = f"{where}: entity_id is not a valid UUID"
         raise RegistryError(msg) from None
-    if entity_id.int == 0:
-        msg = f"{where} ({account_key}): entity_id must not be the nil UUID"
-        raise RegistryError(msg)
-    if len(display_name) > _MAX_DISPLAY_NAME:
-        msg = f"{where} ({account_key}): display_name is too long"
-        raise RegistryError(msg)
-    return RegisteredAccount(account_key, entity_id, display_name, category)
+    try:
+        return RegisteredAccount(key_text, entity_id, display_name, category_text)
+    except RegistryError as exc:
+        msg = f"{where}: {exc}"
+        raise RegistryError(msg) from exc
 
 
 def parse_registry(text: str) -> AccountRegistry:
@@ -225,12 +253,6 @@ def parse_registry(text: str) -> AccountRegistry:
     accounts = [
         _parse_entry(i, raw) for i, raw in enumerate(cast("list[object]", entries))
     ]
-    seen: set[str] = set()
-    for account in accounts:
-        if account.account_key in seen:
-            msg = f"duplicate account key in registry: {account.account_key}"
-            raise RegistryError(msg)
-        seen.add(account.account_key)
     return AccountRegistry(accounts)
 
 

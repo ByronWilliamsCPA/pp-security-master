@@ -12,6 +12,7 @@ number; callers log these messages verbatim.
 from __future__ import annotations
 
 import re
+import unicodedata
 from decimal import ROUND_HALF_UP, Decimal, localcontext
 
 CATEGORIES = (
@@ -21,6 +22,8 @@ CATEGORIES = (
     "Digital currency",
     "Alternatives",
 )
+# The only category whose balance may be negative (an overdraft).
+CASH_CATEGORY = "Cash"
 
 SOURCE_IBKR_FLEX = "ibkr_flex"
 SOURCE_MANUAL_MARK = "manual_mark"
@@ -40,7 +43,10 @@ _KEY_RE = re.compile(r"^pp:[a-z0-9][a-z0-9_-]*(:[a-z0-9][a-z0-9_-]*)*$")
 # Five digits in a row could be most of an account number; four is the limit.
 _LONG_DIGIT_RUN_RE = re.compile(r"\d{5,}")
 _SOURCE_RE = re.compile(r"^[a-z][a-z0-9_]{0,29}$")
-_MONEY_RE = re.compile(r"^-?\d{1,16}(\.\d{1,2})?$")
+# [0-9], not \d: \d also matches non-ASCII digits such as fullwidth forms.
+_MONEY_RE = re.compile(r"^-?[0-9]{1,16}(\.[0-9]{1,2})?$")
+# Characters allowed in free text despite being Unicode controls (category Cc).
+_ALLOWED_CONTROLS = frozenset("\n\t")
 
 
 class BalanceRuleError(ValueError):
@@ -58,8 +64,9 @@ def validate_account_key(key: str) -> str:
 
     Raises:
         BalanceRuleError: When the key lacks the prefix, uses characters outside
-            lowercase alphanumerics, ``_``, ``-`` and ``:``, or contains a run
-            of five or more digits (more than a last-four suffix).
+            lowercase alphanumerics, ``_``, ``-`` and ``:``, contains a run of
+            five or more digits (more than a last-four suffix), or is longer
+            than 100 characters.
     """
     if not _KEY_RE.fullmatch(key):
         msg = "account key must be 'pp:'-prefixed lowercase segments (a-z, 0-9, _, -)"
@@ -122,7 +129,8 @@ def ibkr_account_key(account_number: str) -> str:
         A key of the form ``pp:ibkr:<last four, lowercased>``.
 
     Raises:
-        BalanceRuleError: When the account number is empty or its suffix is not
+        BalanceRuleError: When the stripped account number is empty, or its
+            last four characters (all of it, if shorter) are not all
             alphanumeric.
     """
     suffix = account_number.strip()[-4:].lower()
@@ -157,17 +165,19 @@ def parse_money(text: str) -> Decimal:
 
 
 def check_range(value: Decimal) -> Decimal:
-    """Ensure a two-place value fits the ``Numeric(18, 2)`` column.
+    """Ensure a value is finite and fits the ``Numeric(18, 2)`` column.
 
     Args:
-        value: A finite, already-quantized Decimal.
+        value: The Decimal to check, normally already quantized to cents.
 
     Returns:
         The value, unchanged.
 
     Raises:
-        BalanceRuleError: When the magnitude exceeds sixteen integer digits.
+        BalanceRuleError: When the value is NaN or infinite, or its magnitude
+            exceeds sixteen integer digits.
     """
+    _require_finite(value)
     if abs(value) >= _MAX_ABS_VALUE:
         msg = "value exceeds the supported range"
         raise BalanceRuleError(msg)
@@ -177,18 +187,104 @@ def check_range(value: Decimal) -> Decimal:
 def quantize_cents(value: Decimal) -> Decimal:
     """Round a Decimal to two places, half away from zero, in a wide context.
 
-    The default 28-digit context could itself round a large exact sum before
-    this single, deliberate rounding to cents; a 60-digit context cannot.
+    ``quantize`` raises ``InvalidOperation`` when its result needs more digits
+    than the context precision, so under the default 28-digit context a value
+    with more than 26 integer digits could not be rounded at all. The 60-digit
+    context makes the rounding total for any value a sum can produce. A NaN
+    or infinite value raises ``BalanceRuleError`` (from the finiteness check).
 
     Args:
-        value: A finite Decimal of any scale.
+        value: A Decimal of any scale.
 
     Returns:
         The value quantized to ``0.01``, with negative zero normalized to zero.
     """
+    _require_finite(value)
     with localcontext() as ctx:
         ctx.prec = 60
         return _normalize_zero(value.quantize(_CENT, rounding=ROUND_HALF_UP))
+
+
+def require_cents(value: Decimal) -> Decimal:
+    """Ensure a value is finite, in range, and has at most two decimal places.
+
+    Unlike :func:`quantize_cents` this never rounds: a sub-cent input is an
+    error, so nothing an API caller passes is silently changed.
+
+    Args:
+        value: The candidate balance.
+
+    Returns:
+        The value quantized to exactly two places (trailing zeros only).
+
+    Raises:
+        BalanceRuleError: When the value is not finite, has more than two
+            decimal places, or exceeds the ``Numeric(18, 2)`` range.
+    """
+    cents = quantize_cents(value)
+    if cents != value:
+        msg = "value must have at most two decimal places"
+        raise BalanceRuleError(msg)
+    return check_range(cents)
+
+
+def check_sign(value: Decimal, category: str) -> Decimal:
+    """Allow a negative value only for a Cash account (an overdraft).
+
+    Args:
+        value: The balance value.
+        category: The account's category.
+
+    Returns:
+        The value, unchanged.
+
+    Raises:
+        BalanceRuleError: When the value is negative and the category is not
+            :data:`CASH_CATEGORY`.
+    """
+    if value < 0 and category != CASH_CATEGORY:
+        msg = "a negative value is only allowed for Cash accounts (overdraft)"
+        raise BalanceRuleError(msg)
+    return value
+
+
+def check_plain_text(text: str, field: str, *, multiline: bool = False) -> str:
+    """Reject control characters (terminal escapes) in operator-entered text.
+
+    Every Unicode control character, including the escape that starts an ANSI
+    sequence, is refused so stored text cannot rewrite a terminal when it is
+    listed later. ``multiline`` text may still contain newlines and tabs.
+
+    Args:
+        text: The text to check.
+        field: Field name for the error message.
+        multiline: Allow newlines and tabs (free-text notes).
+
+    Returns:
+        The text, unchanged.
+
+    Raises:
+        BalanceRuleError: When the text contains a disallowed control character.
+    """
+    allowed: frozenset[str] = _ALLOWED_CONTROLS if multiline else frozenset()
+    if any(unicodedata.category(ch) == "Cc" and ch not in allowed for ch in text):
+        msg = f"{field} must not contain control characters"
+        raise BalanceRuleError(msg)
+    return text
+
+
+def _require_finite(value: Decimal) -> None:
+    """Raise a rule error for NaN or an infinity.
+
+    Args:
+        value: The Decimal to check.
+
+    Raises:
+        BalanceRuleError: When the value is not finite.
+    """
+    if not value.is_finite():
+        msg = "value must be a finite number"
+        raise BalanceRuleError(msg)
 
 
 def _normalize_zero(value: Decimal) -> Decimal:

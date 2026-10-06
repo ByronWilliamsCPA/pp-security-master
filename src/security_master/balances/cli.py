@@ -6,6 +6,8 @@
 
 Output and error text never contains a balance except in ``balance list``,
 whose purpose is to show values (always as two-place decimal strings).
+Database errors are reported with fixed text, because a driver message can
+embed the bound parameters (values and keys) of the failed statement.
 """
 
 from __future__ import annotations
@@ -13,10 +15,12 @@ from __future__ import annotations
 import getpass
 import json
 import logging
+from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from security_master.balances.ibkr_totals import compute_nightly_totals
 from security_master.balances.registry import RegistryError, load_registry
@@ -37,8 +41,10 @@ from security_master.storage.database import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Generator
     from datetime import date, datetime
+
+    from sqlalchemy.orm import Session
 
     from security_master.balances.registry import AccountRegistry
 
@@ -94,6 +100,57 @@ def _load_registry_or_fail(registry_path: Path | None) -> AccountRegistry:
         raise click.ClickException(str(exc)) from exc
 
 
+_CONFLICT_MESSAGE = (
+    "the database refused the write: a balance for this account and date "
+    "already exists (possibly written concurrently); nothing was saved"
+)
+_DB_ERROR_MESSAGE = (
+    "database error; nothing was saved. Check --database-url or the DB_* "
+    "settings, and that the schema is migrated"
+)
+
+
+@contextmanager
+def _db_session(database_url: str | None, *, create_schema: bool) -> Generator[Session]:
+    """Open a session for one command, and always dispose of the engine.
+
+    The caller commits. Any exception rolls the session back. Database errors
+    become a ``ClickException`` with fixed text so no bound parameter (a
+    balance or an account key) reaches the terminal.
+
+    Args:
+        database_url: Optional database URL override.
+        create_schema: Create the tables first.
+
+    Yields:
+        An open session.
+
+    Raises:
+        click.ClickException: On any SQLAlchemy error.
+    """
+    engine = create_db_engine(database_url)
+    try:
+        if create_schema:
+            create_tables(engine)
+        session = get_session_factory(engine)()
+        completed = False
+        try:
+            yield session
+            completed = True
+        finally:
+            # An exception from the command body (or an interrupt) leaves
+            # ``completed`` False; undo any uncommitted work before closing.
+            if not completed:
+                session.rollback()
+            session.close()
+    except IntegrityError:
+        raise click.ClickException(_CONFLICT_MESSAGE) from None
+    except SQLAlchemyError:
+        raise click.ClickException(_DB_ERROR_MESSAGE) from None
+    finally:
+        engine.dispose()
+
+
 @click.command("nightly-totals")
 @_common_options
 def nightly_totals(
@@ -105,21 +162,13 @@ def nightly_totals(
     non-USD rows are rejected with a log line, never converted. Exits non-zero
     when any account was withheld so a scheduler notices.
     """
+    # Rejections are logged; make sure they reach stderr when run standalone.
+    # basicConfig is a no-op when the host already configured logging.
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     registry = _load_registry_or_fail(registry_path)
-    engine = create_db_engine(database_url)
-    if create_schema:
-        create_tables(engine)
-    session = get_session_factory(engine)()
-    try:
+    with _db_session(database_url, create_schema=create_schema) as session:
         result = compute_nightly_totals(session, registry)
         session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-        engine.dispose()
 
     if result.report_date is None:
         msg = "no IBKR positions have been imported; nothing to total"
@@ -198,36 +247,29 @@ def balance_set(
     except BalanceRuleError as exc:
         raise click.BadParameter(str(exc), param_hint="--value") from exc
     registry = _load_registry_or_fail(registry_path)
-    engine = create_db_engine(database_url)
-    if create_schema:
-        create_tables(engine)
-    session = get_session_factory(engine)()
-    try:
-        row = set_manual_balance(
-            session,
-            registry,
-            account_key=account_key,
-            value=value,
-            as_of=as_of.date(),
-            source=source,
-            note=note,
-            entered_by=entered_by if entered_by is not None else _default_entered_by(),
-            replace=replace,
-        )
+    with _db_session(database_url, create_schema=create_schema) as session:
+        try:
+            row = set_manual_balance(
+                session,
+                registry,
+                account_key=account_key,
+                value=value,
+                as_of=as_of.date(),
+                source=source,
+                note=note,
+                entered_by=(
+                    entered_by if entered_by is not None else _default_entered_by()
+                ),
+                replace=replace,
+            )
+        except BalanceRuleError as exc:
+            raise click.ClickException(str(exc)) from exc
         session.commit()
-        click.echo(
+        message = (
             f"Recorded {row.source} for {row.account_key} as of "
             f"{row.as_of.isoformat()} (entered by {row.entered_by})."
         )
-    except BalanceRuleError as exc:
-        session.rollback()
-        raise click.ClickException(str(exc)) from exc
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-        engine.dispose()
+    click.echo(message)
 
 
 @balance.command("list")
@@ -256,16 +298,9 @@ def balance_list(
 ) -> None:
     """List every mapped account with its balance (values as decimal strings)."""
     registry = _load_registry_or_fail(registry_path)
-    engine = create_db_engine(database_url)
-    if create_schema:
-        create_tables(engine)
-    session = get_session_factory(engine)()
-    try:
-        as_of_date: date | None = as_of.date() if as_of else None
+    as_of_date: date | None = as_of.date() if as_of else None
+    with _db_session(database_url, create_schema=create_schema) as session:
         rows = list_balances(session, registry, as_of=as_of_date)
-    finally:
-        session.close()
-        engine.dispose()
 
     if output_format == "json":
         click.echo(json.dumps([r.as_dict() for r in rows], indent=2))
