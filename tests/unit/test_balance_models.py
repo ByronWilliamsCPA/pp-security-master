@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from sqlalchemy import CheckConstraint
 from sqlalchemy.exc import IntegrityError
 
 from security_master.balances.rules import CATEGORIES
@@ -92,14 +95,26 @@ def test_check_constraints_reject_bad_rows(
         sqlite_session.commit()
 
 
-def test_model_and_migration_category_lists_match() -> None:
-    from pathlib import Path
+def _category_list(source: str) -> list[str]:
+    """Return the quoted names inside the single ``category IN (...)`` clause."""
+    joined = re.sub(r'"\s*\n\s*"', "", source)
+    matches = re.findall(r"category IN \(([^)]*)\)", joined)
+    assert len(matches) == 1, matches
+    return re.findall(r"'([^']*)'", matches[0])
 
+
+def test_model_and_migration_category_lists_match() -> None:
     migration = (
         Path(__file__).resolve().parents[2]
         / "sql"
         / "versions"
         / "a1c4e7b90d21_account_balances.py"
     ).read_text(encoding="utf-8")
-    for category in CATEGORIES:
-        assert f"'{category}'" in migration
+    expected = list(CATEGORIES)
+    assert _category_list(migration) == expected
+    (model_check,) = (
+        c
+        for c in AccountBalance.__table__.constraints
+        if isinstance(c, CheckConstraint) and c.name == "ck_account_balances_category"
+    )
+    assert _category_list(str(model_check.sqltext)) == expected

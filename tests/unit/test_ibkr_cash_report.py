@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import date
 from decimal import Decimal
 from typing import TYPE_CHECKING
@@ -89,8 +90,45 @@ def test_bad_ending_cash_raises_without_echoing_the_amount(bad: str) -> None:
     with pytest.raises(ValueError, match="endingCash") as info:
         parse_ibkr_flex_records(doc)
     assert bad not in str(info.value)
+    # No chained exception may carry the raw text: either nothing was being
+    # handled (NaN, Infinity) or the context is suppressed with ``from None``.
     assert info.value.__cause__ is None
+    assert info.value.__context__ is None or info.value.__suppress_context__
     assert "U9990001" not in str(info.value)
+
+
+@pytest.mark.parametrize(
+    ("attrs", "fragment"),
+    [
+        ('currency="USD" endingCash="1.0000001"', "decimal places"),
+        ('currency="USD" endingCash="1000000000000"', "range"),
+        ('currency="USDX" endingCash="1"', "three-letter"),
+        ('currency="U1D" endingCash="1"', "three-letter"),
+    ],
+)
+def test_cash_report_values_must_fit_the_column(attrs: str, fragment: str) -> None:
+    doc = (
+        '<FlexQueryResponse><CashReportCurrency accountId="U9990001" '
+        f'toDate="20260619" {attrs}/></FlexQueryResponse>'
+    )
+    with pytest.raises(ValueError, match=fragment):
+        parse_ibkr_flex_records(doc)
+
+
+def test_trailing_zeros_beyond_six_places_are_accepted() -> None:
+    doc = (
+        '<FlexQueryResponse><CashReportCurrency accountId="U9990001" '
+        'currency="USD" toDate="20260619" endingCash="1.50000000"/>'
+        "</FlexQueryResponse>"
+    )
+    (row,) = parse_ibkr_flex_records(doc).cash_report
+    assert row.ending_cash == Decimal("1.5")
+
+
+def test_lowercase_base_summary_is_also_skipped() -> None:
+    doc = _DOC.replace('currency="BASE_SUMMARY"', 'currency="base_summary"')
+    currencies = [r.currency for r in parse_ibkr_flex_records(doc).cash_report]
+    assert currencies == ["USD", "EUR"]
 
 
 def test_cash_report_import_is_idempotent(sqlite_session: Session) -> None:
@@ -105,3 +143,59 @@ def test_cash_report_import_is_idempotent(sqlite_session: Session) -> None:
     usd = next(r for r in stored if r.currency == "USD")
     assert usd.ending_cash == Decimal("1500.256789")
     assert "1500" not in repr(usd)
+
+
+def test_restated_cash_report_updates_the_row(
+    sqlite_session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A later file with a different amount for the same key must win."""
+    service = IBKRFlexImportService(sqlite_session)
+    service.import_from_string(_DOC)
+    caplog.set_level(logging.WARNING)
+    restated = service.import_from_string(
+        _DOC.replace(
+            'currency="USD" fromDate="20260619"\n        toDate="20260619" '
+            'startingCash="1.00" endingCash="1500.256789"',
+            'currency="USD" fromDate="20260619"\n        toDate="20260619" '
+            'startingCash="1.00" endingCash="1600.5"',
+        )
+    )
+    assert (restated.cash_report_rows, restated.cash_report_updated) == (0, 1)
+    assert restated.skipped == 1  # the unchanged EUR row
+    stored = sqlite_session.query(InteractiveBrokersCashReport).all()
+    assert len(stored) == 2
+    usd = next(r for r in stored if r.currency == "USD")
+    assert usd.ending_cash == Decimal("1600.5")
+    assert usd.import_batch_id == restated.import_batch_id
+    assert "ending_cash_changed" in caplog.text
+    for secret in ("1600", "1500", "U9990001"):
+        assert secret not in caplog.text
+
+
+def test_conflicting_duplicate_in_one_document_is_refused(
+    sqlite_session: Session,
+) -> None:
+    doc = (
+        "<FlexQueryResponse>"
+        '<CashReportCurrency accountId="U9990001" currency="USD" '
+        'toDate="20260619" endingCash="1"/>'
+        '<CashReportCurrency accountId="U9990001" currency="USD" '
+        'toDate="20260619" endingCash="2"/>'
+        "</FlexQueryResponse>"
+    )
+    with pytest.raises(ValueError, match="two different endingCash"):
+        IBKRFlexImportService(sqlite_session).import_from_string(doc)
+    sqlite_session.rollback()
+    assert sqlite_session.query(InteractiveBrokersCashReport).count() == 0
+
+
+def test_identical_duplicate_in_one_document_is_skipped(
+    sqlite_session: Session,
+) -> None:
+    row = (
+        '<CashReportCurrency accountId="U9990001" currency="USD" '
+        'toDate="20260619" endingCash="1"/>'
+    )
+    doc = f"<FlexQueryResponse>{row}{row}</FlexQueryResponse>"
+    summary = IBKRFlexImportService(sqlite_session).import_from_string(doc)
+    assert (summary.cash_report_rows, summary.skipped) == (1, 1)

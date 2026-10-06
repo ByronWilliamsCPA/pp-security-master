@@ -23,6 +23,8 @@ from .balance_support import EXAMPLE_SEED
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from click.testing import Result
+
 pytestmark = [
     pytest.mark.unit,
     pytest.mark.storage,
@@ -64,7 +66,7 @@ def url(tmp_path: Path) -> str:
     return f"sqlite:///{tmp_path / 'balances.db'}"
 
 
-def _invoke(url: str, *args: str) -> object:
+def _invoke(url: str, *args: str) -> Result:
     return CliRunner().invoke(
         app,
         [*args, "--database-url", url, "--registry-path", str(EXAMPLE_SEED)],
@@ -175,13 +177,18 @@ def test_list_as_of_filters_to_an_exact_date(url: str) -> None:
             url, "balance", "list", "--format", "json", "--as-of", "2026-06-01"
         ).output
     )
-    by_key = lambda rows: {r["account_key"]: r for r in rows}  # noqa: E731
+
+    def by_key(rows: list[dict[str, str | None]]) -> dict[str, dict[str, str | None]]:
+        return {str(r["account_key"]): r for r in rows}
+
     assert by_key(latest)["pp:ibkr:0001"]["value"] == "20.00"
     assert by_key(older)["pp:ibkr:0001"]["value"] == "10.00"
     assert by_key(older)["pp:ibkr:0002"]["value"] is None
 
 
-def _set(url: str, *extra: str, value: str = "100.50", as_of: str = "2026-06-18"):
+def _set(
+    url: str, *extra: str, value: str = "100.50", as_of: str = "2026-06-18"
+) -> Result:
     return _invoke(
         url,
         "balance",
@@ -350,3 +357,64 @@ def test_nightly_totals_without_positions_is_an_error(url: str) -> None:
     result = _invoke(url, "nightly-totals")
     assert result.exit_code != 0
     assert "nothing to total" in result.output
+
+
+def test_replace_refuses_to_overwrite_an_ibkr_flex_total(
+    url: str, tmp_path: Path
+) -> None:
+    """Relabelling a broker total as manual would fail every later nightly run."""
+    _seed_ibkr(url, tmp_path)
+    assert _invoke(url, "nightly-totals").exit_code == 0
+    result = _set(
+        url, "--entered-by", "example.operator", "--replace", as_of="2026-06-19"
+    )
+    assert result.exit_code != 0
+    assert "ibkr_flex" in result.output
+    assert "100.50" not in result.output
+    row = _rows(url)["pp:ibkr:0001"]
+    assert (row.source, row.value) == ("ibkr_flex", Decimal("1300.00"))
+    assert _invoke(url, "nightly-totals").exit_code == 0
+
+
+@pytest.mark.parametrize(
+    ("option", "text"),
+    [
+        ("--entered-by", "evil\x1b[2Joperator"),
+        ("--note", "page 1\x1b]0;title\x07"),
+    ],
+)
+def test_set_rejects_control_characters(url: str, option: str, text: str) -> None:
+    extra = [option, text]
+    if option != "--entered-by":
+        extra += ["--entered-by", "example.operator"]
+    result = _set(url, *extra)
+    assert result.exit_code != 0
+    assert "control characters" in result.output
+    assert _rows(url) == {}
+
+
+def test_database_errors_are_reported_without_parameters(url: str) -> None:
+    """No schema: the SQL error must become fixed text, not a traceback."""
+    result = _invoke(url, "balance", "list")
+    assert result.exit_code == 1
+    assert "database error" in result.output
+    assert "Traceback" not in result.output
+    assert "pp:ibkr" not in result.output
+
+
+def test_import_broker_reports_a_malformed_cash_row_cleanly(
+    url: str, tmp_path: Path
+) -> None:
+    bad = tmp_path / "bad.xml"
+    bad.write_text(
+        _CASH_XML.replace('endingCash="0.50"', 'endingCash="12.3.4"'),
+        encoding="utf-8",
+    )
+    result = CliRunner().invoke(
+        app, ["import-broker", str(bad), "--database-url", url, "--create-schema"]
+    )
+    assert result.exit_code == 1
+    assert "endingCash" in result.output
+    assert "nothing was saved" in result.output
+    assert "U999000" not in result.output
+    assert not isinstance(result.exception, ValueError)

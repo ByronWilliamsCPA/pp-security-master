@@ -9,12 +9,17 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from security_master.balances.rules import (
+    CASH_CATEGORY,
     CATEGORIES,
     BalanceRuleError,
+    check_plain_text,
+    check_range,
+    check_sign,
     format_money,
     ibkr_account_key,
     parse_money,
     quantize_cents,
+    require_cents,
     validate_account_key,
     validate_category,
     validate_source,
@@ -129,3 +134,48 @@ def test_format_money_is_always_a_two_place_plain_decimal_string(
     assert "e" not in text.lower()
     assert whole.lstrip("-").isdigit()
     assert Decimal(text) == quantize_cents(value)
+
+
+# Built from code points so the source stays ASCII: fullwidth "12.34",
+# Arabic-Indic "12", and a superscript two.
+_NON_ASCII_DIGITS = [
+    "".join(map(chr, (0xFF11, 0xFF12))) + "." + "".join(map(chr, (0xFF13, 0xFF14))),
+    "".join(map(chr, (0x0661, 0x0662))),
+    "1" + chr(0x00B2),
+]
+
+
+@pytest.mark.parametrize("text", _NON_ASCII_DIGITS)
+def test_parse_money_rejects_non_ascii_digits(text: str) -> None:
+    with pytest.raises(BalanceRuleError):
+        parse_money(text)
+
+
+@pytest.mark.parametrize("bad", ["NaN", "Infinity", "-Infinity", "sNaN"])
+def test_quantize_and_range_reject_non_finite_values(bad: str) -> None:
+    with pytest.raises(BalanceRuleError, match="finite"):
+        quantize_cents(Decimal(bad))
+    with pytest.raises(BalanceRuleError, match="finite"):
+        check_range(Decimal(bad))
+
+
+def test_require_cents_never_rounds() -> None:
+    assert str(require_cents(Decimal("1.5"))) == "1.50"
+    with pytest.raises(BalanceRuleError, match="two decimal places"):
+        require_cents(Decimal("1.005"))
+
+
+def test_check_sign_allows_negative_only_for_cash() -> None:
+    assert check_sign(Decimal("-1.00"), CASH_CATEGORY) == Decimal("-1.00")
+    assert check_sign(Decimal(0), "Investments") == Decimal(0)
+    with pytest.raises(BalanceRuleError, match="Cash"):
+        check_sign(Decimal("-0.01"), "Investments")
+
+
+def test_check_plain_text_rejects_controls_but_allows_note_newlines() -> None:
+    assert check_plain_text("line one\nline two\t!", "note", multiline=True)
+    for text in ("a\x1b[31mb", "a\x00b", "a\x7fb"):
+        with pytest.raises(BalanceRuleError, match="control characters"):
+            check_plain_text(text, "note", multiline=True)
+    with pytest.raises(BalanceRuleError, match="entered-by"):
+        check_plain_text("a\nb", "entered-by")

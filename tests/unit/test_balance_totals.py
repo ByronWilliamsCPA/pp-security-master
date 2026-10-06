@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import random
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -14,9 +14,17 @@ from hypothesis import strategies as st
 
 from security_master.balances.ibkr_totals import (
     ENTERED_BY_NIGHTLY,
+    RUN_KEY,
+    UNDERIVABLE_KEY,
+    RejectReason,
+    TotalsResult,
+    _AccountData,
+    _Row,
+    _usd_values,
     compute_nightly_totals,
     sum_account_total,
 )
+from security_master.balances.registry import parse_registry
 from security_master.balances.rules import format_money
 from security_master.storage.balance_models import AccountBalance
 
@@ -43,13 +51,29 @@ pytestmark = [
 
 _MICRO = 1_000_000
 _CENT_IN_MICRO = 10_000
+_NO_ROWS = RejectReason.NO_ROWS_ON_REPORT_DATE
+
+# A registry with an IBKR Cash account, to exercise the overdraft rule.
+_CASH_IBKR_SEED = """
+accounts:
+  - account_key: "pp:ibkr:0003"  # pragma: allowlist secret -- account key
+    entity_id: "11111111-1111-4111-8111-111111111111"
+    display_name: "Example Cash Sweep"
+    category: "Cash"
+"""
+
+
+def _reasons(result: TotalsResult, key: str) -> list[RejectReason]:
+    """Return the reason codes recorded for one account key, in order."""
+    return [r.reason for r in result.rejections if r.account_key == key]
 
 
 def _oracle_cents(values: list[Decimal]) -> Decimal:
     """Independent reference: integer micro-units, one half-up rounding to cents.
 
-    Shares no code with the implementation (no Decimal arithmetic, no context):
-    every value becomes an exact integer number of millionths.
+    Shares no summation or rounding code with the implementation: each value
+    is shifted to an exact integer number of millionths (``scaleb`` only moves
+    the exponent), and the sum and the rounding are plain integer arithmetic.
     """
     micro = sum(int(v.scaleb(6)) for v in values)
     quotient, remainder = divmod(abs(micro), _CENT_IN_MICRO)
@@ -121,8 +145,14 @@ def test_sum_is_not_rounded_by_the_default_context() -> None:
 def test_seeded_random_database_totals_match_the_oracle(
     sqlite_session: Session,
 ) -> None:
-    """End to end through the tables: random positions plus cash, exact cents."""
-    rng = random.Random(20260619)  # noqa: S311 - deterministic test data
+    """End to end through the tables: random positions plus cash, exact cents.
+
+    SQLite stores ``Numeric`` as a float (hence the filtered SAWarning), so the
+    values are bounded to at most fourteen significant digits, which a double
+    round-trips exactly. Exactness beyond that is proven on the pure function
+    above; this test proves the query, grouping, and write path.
+    """
+    rng = random.Random(20260619)
     expected: dict[str, Decimal] = {}
     for account in (ACCT_INVEST, ACCT_IRA):
         values = [
@@ -194,10 +224,21 @@ def test_rerun_updates_in_place(sqlite_session: Session) -> None:
     add_cash(sqlite_session, ACCT_INVEST, Decimal("5.00"))
     sqlite_session.commit()
     registry = example_registry()
-    compute_nightly_totals(sqlite_session, registry)
-    again = compute_nightly_totals(sqlite_session, registry)
+    first_stamp = datetime(2026, 6, 20, 1, 0, tzinfo=UTC)
+    compute_nightly_totals(sqlite_session, registry, now=first_stamp)
+    assert sqlite_session.query(AccountBalance).one().value == Decimal("15.00")
+
+    # A late position for the same date changes the total; the rerun must
+    # rewrite the existing row, not just count it.
+    add_position(sqlite_session, ACCT_INVEST, Decimal("2.50"))
+    sqlite_session.commit()
+    second_stamp = datetime(2026, 6, 20, 2, 0, tzinfo=UTC)
+    again = compute_nightly_totals(sqlite_session, registry, now=second_stamp)
+
     assert (again.inserted, again.updated) == (0, 1)
-    assert sqlite_session.query(AccountBalance).count() == 1
+    row = sqlite_session.query(AccountBalance).one()
+    assert row.value == Decimal("17.50")
+    assert row.entered_at.replace(tzinfo=UTC) == second_stamp
 
 
 def test_no_positions_means_no_report_date(sqlite_session: Session) -> None:
@@ -235,13 +276,15 @@ def test_zero_valued_non_usd_row_is_dropped_but_does_not_withhold(
     add_position(sqlite_session, ACCT_INVEST, Decimal("10.00"))
     add_cash(sqlite_session, ACCT_INVEST, Decimal("5.00"))
     add_cash(sqlite_session, ACCT_INVEST, Decimal(0), currency="EUR")
+    add_cash(sqlite_session, ACCT_IRA, Decimal("1.00"))
     sqlite_session.commit()
     caplog.set_level(logging.INFO)
     result = compute_nightly_totals(sqlite_session, example_registry())
     assert result.accounts_withheld == 0
-    assert result.inserted == 1
+    assert result.inserted == 2
     assert "non_usd_row" in caplog.text
-    assert sqlite_session.query(AccountBalance).one().value == Decimal("15.00")
+    invest = sqlite_session.query(AccountBalance).filter_by(account_key="pp:ibkr:0001")
+    assert invest.one().value == Decimal("15.00")
 
 
 @pytest.mark.parametrize(
@@ -276,7 +319,9 @@ def test_rejections_carry_a_reason_and_never_leak_amounts(
 
     result = compute_nightly_totals(sqlite_session, example_registry())
 
-    assert [r.reason for r in result.rejections] == [reason]
+    key = "pp:ibkr:0009" if setup == "unmapped" else "pp:ibkr:0001"
+    assert _reasons(result, key) == [reason]
+    assert all(r.reason == _NO_ROWS for r in result.rejections if r.account_key != key)
     assert sqlite_session.query(AccountBalance).count() == 0
     for secret in ("4242", "9191", "U999000"):
         assert secret not in caplog.text
@@ -289,8 +334,146 @@ def test_suffix_collision_is_rejected_not_merged(sqlite_session: Session) -> Non
     add_cash(sqlite_session, "U8880001", Decimal("2.00"))
     sqlite_session.commit()
     result = compute_nightly_totals(sqlite_session, example_registry())
-    assert [r.reason for r in result.rejections] == ["ambiguous_suffix"]
+    assert _reasons(result, "pp:ibkr:0001") == ["ambiguous_suffix"]
     assert sqlite_session.query(AccountBalance).count() == 0
+
+
+def test_suffix_collision_on_another_date_is_rejected(
+    sqlite_session: Session,
+) -> None:
+    """A different account with the same last four on any date is ambiguous."""
+    older = REPORT_DATE - timedelta(days=30)
+    add_position(sqlite_session, "U8880001", Decimal("2.00"), report_date=older)
+    add_cash(sqlite_session, "U8880001", Decimal("2.00"), report_date=older)
+    add_position(sqlite_session, ACCT_INVEST, Decimal("1.00"))
+    add_cash(sqlite_session, ACCT_INVEST, Decimal("1.00"))
+    sqlite_session.commit()
+    result = compute_nightly_totals(sqlite_session, example_registry())
+    assert _reasons(result, "pp:ibkr:0001") == ["ambiguous_suffix"]
+    assert sqlite_session.query(AccountBalance).count() == 0
+
+
+def test_registered_account_with_no_rows_is_withheld(
+    sqlite_session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A registered IBKR account missing from the export must not pass silently."""
+    add_position(sqlite_session, ACCT_INVEST, Decimal("10.00"))
+    add_cash(sqlite_session, ACCT_INVEST, Decimal("5.00"))
+    sqlite_session.commit()
+    caplog.set_level(logging.INFO)
+
+    result = compute_nightly_totals(sqlite_session, example_registry())
+
+    assert result.inserted == 1
+    assert _reasons(result, "pp:ibkr:0002") == ["no_rows_on_report_date"]
+    assert result.accounts_withheld == 1
+    assert "pp:ibkr:0002" in caplog.text
+    # Non-IBKR registry accounts (manual marks) are not expected in the export.
+    assert _reasons(result, "pp:bank:0003") == []
+
+
+def test_cash_dated_a_day_later_is_not_joined(sqlite_session: Session) -> None:
+    """Cash for another day is never summed with these positions."""
+    next_day = REPORT_DATE + timedelta(days=1)
+    for account in (ACCT_INVEST, ACCT_IRA):
+        add_position(sqlite_session, account, Decimal("10.00"))
+        add_cash(sqlite_session, account, Decimal("5.00"), report_date=next_day)
+    sqlite_session.commit()
+
+    result = compute_nightly_totals(sqlite_session, example_registry())
+
+    assert result.report_date == REPORT_DATE
+    assert _reasons(result, RUN_KEY) == ["cash_date_ahead"]
+    assert _reasons(result, "pp:ibkr:0001") == ["no_usd_cash_row"]
+    assert _reasons(result, "pp:ibkr:0002") == ["no_usd_cash_row"]
+    assert result.accounts_withheld == 3
+    assert sqlite_session.query(AccountBalance).count() == 0
+
+
+def test_newer_cash_with_complete_older_date_still_exits_nonzero(
+    sqlite_session: Session,
+) -> None:
+    """Re-totalling the older day is fine, but the lag must not exit 0."""
+    for account in (ACCT_INVEST, ACCT_IRA):
+        add_position(sqlite_session, account, Decimal("10.00"))
+        add_cash(sqlite_session, account, Decimal("5.00"))
+        add_cash(
+            sqlite_session,
+            account,
+            Decimal("6.00"),
+            report_date=REPORT_DATE + timedelta(days=1),
+        )
+    sqlite_session.commit()
+    result = compute_nightly_totals(sqlite_session, example_registry())
+    assert result.inserted == 2
+    assert [r.reason for r in result.rejections] == ["cash_date_ahead"]
+    assert result.accounts_withheld == 1
+
+
+def test_cash_dated_before_positions_withholds(sqlite_session: Session) -> None:
+    for account in (ACCT_INVEST, ACCT_IRA):
+        add_position(sqlite_session, account, Decimal("10.00"))
+        add_cash(
+            sqlite_session,
+            account,
+            Decimal("5.00"),
+            report_date=REPORT_DATE - timedelta(days=1),
+        )
+    sqlite_session.commit()
+    result = compute_nightly_totals(sqlite_session, example_registry())
+    assert {r.reason for r in result.rejections} == {"no_usd_cash_row"}
+    assert sqlite_session.query(AccountBalance).count() == 0
+
+
+def test_out_of_range_total_is_withheld(
+    sqlite_session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    # 2e16 is exact in a double, so it survives SQLite's float storage.
+    add_position(sqlite_session, ACCT_INVEST, Decimal("2e16"))
+    add_cash(sqlite_session, ACCT_INVEST, Decimal("1.00"))
+    sqlite_session.commit()
+    caplog.set_level(logging.INFO)
+    result = compute_nightly_totals(sqlite_session, example_registry())
+    assert _reasons(result, "pp:ibkr:0001") == ["out_of_range"]
+    assert sqlite_session.query(AccountBalance).count() == 0
+    assert "20000000000000000" not in caplog.text
+
+
+def test_negative_total_is_allowed_for_a_cash_account(sqlite_session: Session) -> None:
+    registry = parse_registry(_CASH_IBKR_SEED)
+    add_position(sqlite_session, "U9990003", Decimal("1.00"))
+    add_cash(sqlite_session, "U9990003", Decimal("-26.25"))
+    sqlite_session.commit()
+    result = compute_nightly_totals(sqlite_session, registry)
+    assert result.rejections == []
+    assert sqlite_session.query(AccountBalance).one().value == Decimal("-25.25")
+
+
+def test_bad_account_number_is_rejected_without_echoing_it(
+    sqlite_session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    add_position(sqlite_session, "U77-", Decimal("1.00"))
+    add_cash(sqlite_session, "U77-", Decimal("1.00"))
+    sqlite_session.commit()
+    caplog.set_level(logging.INFO)
+    result = compute_nightly_totals(sqlite_session, example_registry())
+    assert _reasons(result, UNDERIVABLE_KEY) == ["bad_account_number"] * 2
+    assert "U77-" not in caplog.text
+    # Two un-keyable rows are one problem, plus the two missing accounts.
+    assert result.accounts_withheld == 3
+
+
+@pytest.mark.parametrize("bad", ["NaN", "Infinity", "-Infinity"])
+def test_non_finite_value_is_rejected_as_invalid(bad: str) -> None:
+    """SQLite cannot store NaN, so the row filter is exercised directly."""
+    result = TotalsResult(report_date=REPORT_DATE)
+    data = _AccountData(
+        account_numbers={ACCT_INVEST},
+        positions=[_Row("USD", Decimal(bad))],
+        cash=[_Row("USD", Decimal("1.00"))],
+    )
+    assert _usd_values("pp:ibkr:0001", data, result) is None
+    assert [r.reason for r in result.rejections] == ["invalid_value"]
 
 
 def test_existing_manual_mark_is_not_overwritten(sqlite_session: Session) -> None:
@@ -311,5 +494,5 @@ def test_existing_manual_mark_is_not_overwritten(sqlite_session: Session) -> Non
     add_cash(sqlite_session, ACCT_INVEST, Decimal("5.00"))
     sqlite_session.commit()
     result = compute_nightly_totals(sqlite_session, registry)
-    assert [r.reason for r in result.rejections] == ["existing_other_source"]
+    assert _reasons(result, "pp:ibkr:0001") == ["existing_other_source"]
     assert sqlite_session.query(AccountBalance).one().value == Decimal("1.00")
