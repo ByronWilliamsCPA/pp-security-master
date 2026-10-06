@@ -8,7 +8,7 @@ UUID with no foreign key because the entity master lives outside this database.
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 
 revision = (
     "a1c4e7b90d21"  # pragma: allowlist secret -- Alembic revision id, not a secret
@@ -57,6 +57,29 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # #CRITICAL (data integrity): ibkr_flex rows can be recomputed from the
+    # broker tables, but manual marks (manual_mark and feed sources) cannot.
+    # Refuse to drop the table while any exist so a downgrade never silently
+    # destroys hand-entered statement values.
+    # #VERIFY: export or delete the non-ibkr_flex rows deliberately, then
+    # re-run the downgrade.
+    if not context.is_offline_mode():
+        manual_rows = (
+            op.get_bind()
+            .execute(
+                sa.text(
+                    "SELECT count(*) FROM account_balances WHERE source <> 'ibkr_flex'"
+                )
+            )
+            .scalar_one()
+        )
+        if manual_rows:
+            msg = (
+                f"{_TABLE} holds {manual_rows} row(s) that cannot be regenerated "
+                "(source is not ibkr_flex); export or delete them before "
+                "downgrading"
+            )
+            raise RuntimeError(msg)
     op.drop_index(op.f(f"ix_{_TABLE}_as_of"), table_name=_TABLE)
     op.drop_index(op.f(f"ix_{_TABLE}_entity_id"), table_name=_TABLE)
     op.drop_index(op.f(f"ix_{_TABLE}_account_key"), table_name=_TABLE)

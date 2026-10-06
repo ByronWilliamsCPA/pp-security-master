@@ -31,7 +31,8 @@ from .models import Base
 
 # Kept in sync with security_master.balances.rules.CATEGORIES; the CHECK
 # constraint below repeats the literal list so the DDL is self-describing.
-# #VERIFY: test_balance_models pins the two lists together.
+# #VERIFY: test_model_and_migration_category_lists_match pins the model CHECK,
+# the migration CHECK, and CATEGORIES to the same exact list.
 _CATEGORY_CHECK = (
     "category IN ('Investments', 'Retirement', 'Cash', "
     "'Digital currency', 'Alternatives')"
@@ -54,7 +55,8 @@ class AccountBalance(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    # Stable, unique, "pp:"-prefixed key. Never a full account number.
+    # Stable "pp:"-prefixed key, unique per account (one row per key and
+    # as-of date). Never a full account number.
     account_key: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     display_name: Mapped[str] = mapped_column(String(200), nullable=False)
     # #CRITICAL (data integrity): entity_id is required and never null; a
@@ -71,6 +73,8 @@ class AccountBalance(Base):
     as_of: Mapped[date] = mapped_column(Date, nullable=False, index=True)
 
     entered_by: Mapped[str] = mapped_column(String(100), nullable=False)
+    # Timezone-aware on purpose: other services read this column, and an
+    # explicit offset removes any doubt that it is UTC. Always written in UTC.
     entered_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
