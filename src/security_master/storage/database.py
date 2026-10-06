@@ -35,7 +35,9 @@ def create_db_engine(database_url: str | None = None) -> Engine:
             get_database_url() to read from environment variables.
 
     Returns:
-        SQLAlchemy Engine with pool_pre_ping enabled and pool_recycle=300.
+        SQLAlchemy Engine with pool_pre_ping enabled, pool_recycle=300, and
+        hide_parameters set so error messages and echo logs never include
+        bound values (balances, account numbers).
     """
     if database_url is None:
         database_url = get_database_url()
@@ -45,6 +47,7 @@ def create_db_engine(database_url: str | None = None) -> Engine:
         echo=os.getenv("DB_ECHO", "false").lower() == "true",
         pool_pre_ping=True,
         pool_recycle=300,
+        hide_parameters=True,
     )
 
 
