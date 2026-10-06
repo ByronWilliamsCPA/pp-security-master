@@ -28,6 +28,7 @@ src/security_master/
 ├── extractor/        # Broker file parsers (PP XML, IBKR Flex, Wells CSV, AltoIRA PDF)
 ├── classifier/       # Classification engine (fund.py, equity.py, bond.py)  
 ├── storage/          # Database layer: models, mappers, validators, views, schema exports
+├── balances/         # Account balances ledger: registry, field rules, nightly IBKR totals, manual marks (ADR-017)
 ├── patch/            # PP XML/JSON writers for sync back to Portfolio Performance
 ├── cli.py           # Main CLI interface
 └── utils.py         # Shared utilities
@@ -62,6 +63,21 @@ uv run alembic upgrade head
 
 # Test database connection
 uv run python -m pytest tests/test_db_connection.py -v
+```
+
+### Account Balances (ADR-017)
+
+```bash
+# Registry seed lives outside the repo; point at it via env or .env
+export PP_ACCOUNT_REGISTRY_PATH=/path/to/account_registry.yaml
+
+# After importing the day's Flex files (positions and CashReport)
+uv run pp-master nightly-totals
+
+# Manual statement marks and listing
+uv run pp-master balance set --account pp:example:0001 --value 1234.56 \
+  --as-of 2026-06-19 --source manual_mark
+uv run pp-master balance list --format json
 ```
 
 ### Code Quality
