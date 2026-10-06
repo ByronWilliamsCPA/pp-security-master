@@ -56,6 +56,18 @@ def upgrade() -> None:
     op.create_index(op.f(f"ix_{_TABLE}_as_of"), _TABLE, ["as_of"])
 
 
+_OFFLINE_GUARD = """
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM account_balances WHERE source <> 'ibkr_flex') THEN
+        RAISE EXCEPTION 'account_balances holds rows that cannot be regenerated '
+            '(source is not ibkr_flex); export or delete them before downgrading';
+    END IF;
+END
+$$
+"""
+
+
 def downgrade() -> None:
     # #CRITICAL (data integrity): ibkr_flex rows can be recomputed from the
     # broker tables, but manual marks (manual_mark and feed sources) cannot.
@@ -63,7 +75,18 @@ def downgrade() -> None:
     # destroys hand-entered statement values.
     # #VERIFY: export or delete the non-ibkr_flex rows deliberately, then
     # re-run the downgrade.
-    if not context.is_offline_mode():
+    if context.is_offline_mode():
+        # An offline script cannot count rows now, so it carries the guard
+        # into the SQL itself: the script aborts before DROP TABLE if any
+        # manual mark exists when it is applied.
+        if op.get_context().dialect.name != "postgresql":
+            msg = (
+                f"offline downgrade of {_TABLE} is only supported for "
+                "PostgreSQL, where the script can guard manual marks"
+            )
+            raise RuntimeError(msg)
+        op.execute(_OFFLINE_GUARD)
+    else:
         manual_rows = (
             op.get_bind()
             .execute(

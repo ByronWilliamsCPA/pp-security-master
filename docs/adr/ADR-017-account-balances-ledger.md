@@ -167,7 +167,8 @@ Two Alembic revisions add `ibkr_cash_report` (`c5f2d80b6e37`) and
 run while it holds any row whose source is not `ibkr_flex`, because manual
 marks cannot be recreated from broker files. Back up the table and clear those
 rows first if the downgrade is intended. In offline (SQL script) mode the
-check cannot run and the drop is emitted as written.
+same check is written into the script as a PostgreSQL `DO` block that aborts
+before `DROP TABLE`; offline generation for any other dialect is refused.
 
 ## Consequences
 
