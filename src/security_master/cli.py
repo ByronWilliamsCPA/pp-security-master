@@ -8,6 +8,12 @@ Exposes these commands under the ``pp-master`` group:
   the transactions store.
 - ``classify``: a sub-group for Tier-4 manual classification (gics-sector,
   sleeve, cash, crypto-seed) that locks a row against automated overwrite.
+- ``reconcile-positions``: load an IBKR OpenPosition snapshot and report drift
+  against the holdings reconstructed from the transactions store.
+- ``nightly-totals``: total each IBKR account (positions plus USD cash) for the
+  latest report date into ``account_balances``.
+- ``balance``: a sub-group to record (``set``) and show (``list``) account
+  balances, including manual marks for accounts with no broker feed.
 
 Database connection details are read from the environment (see
 :func:`security_master.storage.database.get_database_url`).
@@ -21,6 +27,7 @@ from typing import TYPE_CHECKING
 
 import click
 
+from security_master.balances.cli import balance, nightly_totals
 from security_master.classifier import (
     AssignmentKind,
     ClassificationLockedError,
@@ -176,6 +183,13 @@ def import_broker(
     try:
         service = IBKRFlexImportService(session)
         summary = service.import_from_file(file)
+    except ValueError as exc:
+        # A malformed record aborts the whole file before anything is saved.
+        # Parser messages name the record type and attribute; the shared Flex
+        # date and decimal helpers also echo the text they could not parse,
+        # which is never a valid amount.
+        msg = f"{file} was not imported (nothing was saved): {exc}"
+        raise click.ClickException(msg) from exc
     finally:
         session.close()
 
@@ -183,7 +197,9 @@ def import_broker(
         f"Imported {summary.trades} trade(s), "
         f"{summary.cash_transactions} cash transaction(s), "
         f"{summary.corporate_actions} corporate action(s), "
-        f"{summary.transfers} transfer(s) "
+        f"{summary.transfers} transfer(s), "
+        f"{summary.cash_report_rows} cash report row(s), "
+        f"updated {summary.cash_report_updated} restated cash report row(s) "
         f"(skipped {summary.skipped} existing) "
         f"from {file} as batch {summary.import_batch_id}."
     )
@@ -395,6 +411,8 @@ def classify_crypto_seed(classified_by: str, *, force: bool) -> None:
 
 
 app.add_command(classify)
+app.add_command(balance)
+app.add_command(nightly_totals)
 
 
 @app.command("reconcile-positions")

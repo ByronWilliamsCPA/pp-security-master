@@ -1,15 +1,19 @@
-"""Parsers for IBKR Flex non-trade records: cash, corporate actions, transfers.
+"""Parsers for IBKR Flex non-trade records: cash, corporate actions, transfers,
+and CashReport ending cash.
 
 Each parser is a pure function mapping one XML element's attributes to a frozen
 dataclass shaped to the persistence columns. Faithful ingest: values are
 normalized (empty/``--`` to None, dates/decimals typed) but not interpreted
-(no split math, no cash-type normalization; those are Layer-2 concerns).
+(no split math, no cash-type normalization; those are Layer-2 concerns). The
+one exception is CashReport ending cash, which is validated against its column
+(three-letter currency, at most six decimal places, in range) because it feeds
+balance totals and must never be silently truncated or rounded.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import TYPE_CHECKING
 
 from security_master.extractor._flex_common import (
@@ -94,6 +98,32 @@ class ParsedTransfer:
     asset_class: str | None
 
 
+# IBKR appends one roll-up row per account whose currency is this literal. It is
+# the account total in base currency, so storing it next to the per-currency rows
+# would double count cash.
+# #ASSUME (external resource): the roll-up row is always tagged BASE_SUMMARY.
+# #VERIFY: test_cash_report_skips_base_summary; re-check against a real
+# CashReport export if IBKR changes the label.
+BASE_SUMMARY_CURRENCY = "BASE_SUMMARY"
+
+# ibkr_cash_report.ending_cash is Numeric(18, 6): six places, twelve integer
+# digits. A value outside that would be rounded or overflow on PostgreSQL.
+_CASH_PLACES = 6
+_CASH_QUANTUM = Decimal(1).scaleb(-_CASH_PLACES)
+_CASH_MAX_ABS = Decimal(10) ** 12
+_CURRENCY_LEN = 3
+
+
+@dataclass(frozen=True)
+class ParsedCashReportRow:
+    """One IBKR Flex CashReportCurrency row: ending cash in one currency."""
+
+    account_number: str
+    report_date: date
+    currency: str
+    ending_cash: Decimal
+
+
 def _require(value: str | None, field: str, record: str) -> str:
     """Return a required attribute or raise with a precise message.
 
@@ -127,7 +157,7 @@ def _require_date(value: str | None, field: str, record: str) -> date:
         The parsed date.
 
     Raises:
-        ValueError: When the date is empty or absent.
+        ValueError: When the date is empty, absent, or in no known format.
     """
     parsed = parse_flex_date(value)
     if parsed is None:
@@ -253,4 +283,79 @@ def transfer_from_element(elem: ET.Element) -> ParsedTransfer:
         currency=none_if_empty(a.get("currency")) or "USD",
         account_number=none_if_empty(a.get("accountId")),
         asset_class=none_if_empty(a.get("assetCategory")),
+    )
+
+
+def is_base_summary(elem: ET.Element) -> bool:
+    """Return True for the ``BASE_SUMMARY`` roll-up row of a CashReport.
+
+    Args:
+        elem: A ``<CashReportCurrency>`` element.
+
+    Returns:
+        True when the element is the base-currency roll-up, not a real currency.
+    """
+    return (elem.get("currency") or "").strip().upper() == BASE_SUMMARY_CURRENCY
+
+
+def cash_report_from_element(elem: ET.Element) -> ParsedCashReportRow:
+    """Map a ``<CashReportCurrency>`` element to a ParsedCashReportRow.
+
+    The report date is the statement end date (``toDate``), falling back to
+    ``reportDate`` for queries configured without a date range.
+
+    Error messages name the offending attribute only and never echo the amount
+    or the account id, so a malformed row cannot leak a balance into a log.
+
+    Args:
+        elem: A ``<CashReportCurrency>`` element from a Flex CashReport section.
+
+    Returns:
+        A :class:`ParsedCashReportRow` with typed date and decimal fields.
+
+    Raises:
+        ValueError: When accountId, currency, the date, or endingCash is
+            missing; the date is in no known format; the currency is not three
+            letters; or endingCash is not a finite decimal with at most six
+            places and twelve integer digits.
+    """
+    a = elem.attrib
+    date_attr = "toDate" if none_if_empty(a.get("toDate")) else "reportDate"
+    raw_cash = none_if_empty(a.get("endingCash"))
+    if raw_cash is None:
+        msg = (
+            "IBKR CashReportCurrency is missing required numeric attribute 'endingCash'"
+        )
+        raise ValueError(msg)
+    try:
+        ending_cash = Decimal(raw_cash)
+    except InvalidOperation:
+        msg = "IBKR CashReportCurrency has an unparseable 'endingCash'"
+        raise ValueError(msg) from None
+    # Decimal accepts NaN and Infinity; either would poison every later sum.
+    if not ending_cash.is_finite():
+        msg = "IBKR CashReportCurrency has a non-finite 'endingCash'"
+        raise ValueError(msg)
+    if abs(ending_cash) >= _CASH_MAX_ABS:
+        msg = "IBKR CashReportCurrency 'endingCash' exceeds the supported range"
+        raise ValueError(msg)
+    if ending_cash.quantize(_CASH_QUANTUM) != ending_cash:
+        msg = (
+            "IBKR CashReportCurrency 'endingCash' has more than "
+            f"{_CASH_PLACES} decimal places"
+        )
+        raise ValueError(msg)
+    currency = (
+        _require(a.get("currency"), "currency", "CashReportCurrency").strip().upper()
+    )
+    if len(currency) != _CURRENCY_LEN or not (
+        currency.isascii() and currency.isalpha()
+    ):
+        msg = "IBKR CashReportCurrency 'currency' is not a three-letter code"
+        raise ValueError(msg)
+    return ParsedCashReportRow(
+        account_number=_require(a.get("accountId"), "accountId", "CashReportCurrency"),
+        report_date=_require_date(a.get(date_attr), date_attr, "CashReportCurrency"),
+        currency=currency,
+        ending_cash=ending_cash,
     )

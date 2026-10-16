@@ -21,6 +21,7 @@ from sqlalchemy import engine_from_config, pool
 # and transaction_models register additional tables against the same Base.
 from security_master.storage import (
     account_models,  # noqa: F401  -- registers the account_mappings table
+    balance_models,  # noqa: F401  -- registers the account_balances ledger table
     entity,  # noqa: F401  -- registers clients + legal_entities Entity Registry tables
     models,  # noqa: F401  -- registers core + Kubera tables, defines Base
     position_models,  # noqa: F401  -- registers broker position-snapshot tables

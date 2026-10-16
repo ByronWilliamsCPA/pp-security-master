@@ -6,9 +6,11 @@
   "enabledManagers": [
     "pep621",
     "github-actions",
-    "pre-commit",
-    "pip_requirements"
+    "pre-commit"
   ],
+  "lockFileMaintenance": {
+    "enabled": true
+  },
   "packageRules": [
     {
       "description": "Pin GitHub Actions to commit SHA",

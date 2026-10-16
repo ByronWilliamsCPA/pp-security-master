@@ -1,0 +1,23 @@
+# EXAMPLE ONLY. Pairs with pp-master-nightly.service in this directory; see
+# the notes there. Nothing in this repository installs or enables it.
+#
+# Fires once a day at 00:30 in the America/Los_Angeles time zone (systemd
+# supports a time zone name at the end of OnCalendar), so the run, capped at 45
+# minutes by the service, finishes before 02:00 Pacific whatever the host clock
+# is set to.
+#
+# Persistent is deliberately off: if the machine was down at 00:30, a catch-up
+# run at boot could land after 02:00. Run the service by hand in that case:
+#   systemctl start pp-master-nightly.service
+
+[Unit]
+Description=EXAMPLE: daily trigger for the Security Master nightly job
+
+[Timer]
+OnCalendar=*-*-* 00:30:00 America/Los_Angeles
+Persistent=false
+AccuracySec=1min
+Unit=pp-master-nightly.service
+
+[Install]
+WantedBy=timers.target
