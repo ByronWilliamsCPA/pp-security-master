@@ -1,0 +1,54 @@
+# EXAMPLE ONLY. Copy, adapt, and review before use; nothing in this repository
+# installs or enables it. All paths, the user name, and the file names below
+# are placeholders. No hostname is assumed: the database is reached through the
+# DB_* settings in the environment file, wherever that database runs.
+#
+# Order matters and is enforced by running the steps one after another in a
+# single oneshot unit. If a step fails, the later steps do not run:
+#   1. import-broker       loads the activity Flex export (trades and CashReport)
+#   2. reconcile-positions loads the OpenPosition Flex export
+#   3. nightly-totals      totals each account on the latest report date
+# nightly-totals joins positions and cash on one exact date, so both imports
+# must finish first. nightly-totals exits non-zero if it withholds any account,
+# which marks this unit failed so a monitor can notice.
+#
+# Install (as root, paths are placeholders):
+#   cp pp-master-nightly.service pp-master-nightly.timer /etc/systemd/system/
+#   systemctl daemon-reload
+#   systemctl enable --now pp-master-nightly.timer
+#
+# The environment file is kept OUTSIDE the repository, readable only by the
+# service user (mode 0600). It holds, with your own values:
+#   DB_HOST=...  DB_PORT=...  DB_NAME=...  DB_USER=...  DB_PASSWORD=...
+#   PP_ACCOUNT_REGISTRY_PATH=/path/outside/repo/account_registry.yaml
+#   PP_FLEX_ACTIVITY_FILE=/path/to/latest/activity_flex.xml
+#   PP_FLEX_POSITIONS_FILE=/path/to/latest/positions_flex.xml
+# Fetching or dropping the two Flex files into place is outside this example;
+# they must exist and be current before the timer fires.
+
+[Unit]
+Description=EXAMPLE: Security Master nightly broker import and account totals
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=pp-master
+WorkingDirectory=/opt/pp-security-master
+EnvironmentFile=/etc/pp-security-master/nightly.env
+
+# Sequential by construction: a oneshot unit runs each ExecStart in order and
+# stops at the first failure.
+ExecStart=/opt/pp-security-master/.venv/bin/pp-master import-broker --institution ibkr ${PP_FLEX_ACTIVITY_FILE}
+ExecStart=/opt/pp-security-master/.venv/bin/pp-master reconcile-positions ${PP_FLEX_POSITIONS_FILE}
+ExecStart=/opt/pp-security-master/.venv/bin/pp-master nightly-totals
+
+# The timer starts at 00:30 America/Los_Angeles. A 45 minute cap means a hung
+# step is killed by 01:15 at the latest, well before the 02:00 deadline.
+TimeoutStartSec=45min
+
+# Light hardening; adjust for your host.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
