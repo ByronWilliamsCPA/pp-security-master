@@ -7,7 +7,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  merge_group:
+  # No merge_group trigger: SonarCloud is not a required check, so the merge queue
+  # does not wait on it, and a queue run is recorded by SonarCloud as a second
+  # main-branch analysis of the same commit (or of a batch that never lands).
+  # #ASSUME: no ruleset lists the SonarCloud check as required.
+  # #VERIFY: before making it required, restore merge_group here or the merge
+  # queue will wait forever on a check that never reports.
 
 # Top-level read-only; the job below grants only what the reusable workflow needs.
 permissions:
