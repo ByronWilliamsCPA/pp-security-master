@@ -15,7 +15,13 @@ the nightly job in a fixed order, so the totals always see the day's data:
 
 `nightly-totals` joins positions and cash on one exact report date, so both
 imports come first. The timer starts the run at 00:30 America/Los_Angeles and
-the service caps it at 45 minutes, so it ends before 02:00 Pacific.
+the service caps the whole run at 45 minutes (`TimeoutStartSec`, on a single
+command that runs all three steps, because systemd ignores `RuntimeMaxSec` on
+oneshot units), so it ends before 02:00 Pacific.
+
+The two Flex files must be fresh for the night's statement date. The unit
+refuses to start if either file was modified more than 24 hours ago, which is a
+rough file-age check and not a check of the date inside the file.
 
 The unit takes its database settings from an environment file kept outside the
 repository (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`,

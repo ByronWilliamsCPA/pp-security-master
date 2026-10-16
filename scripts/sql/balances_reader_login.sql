@@ -14,7 +14,14 @@
 -- store, outside this repository.
 --
 -- The login role holds no privileges of its own; it only joins the group role.
--- To revoke access, drop this role (DROP ROLE <reader_login_name>).
+-- The grant on account_balances (in balances_reader_group.sql) is the access
+-- control. Nothing else in this file restricts what the role may do.
+--
+-- Not idempotent: CREATE ROLE fails if the login role already exists, so
+-- re-running this file for an existing reader stops with an error. To rotate
+-- that reader's password, connect as a superuser and run only:
+--   \password <reader_login_name>
+-- To revoke access, drop the role (DROP ROLE <reader_login_name>).
 
 CREATE ROLE :"login_role"
     LOGIN
@@ -22,8 +29,9 @@ CREATE ROLE :"login_role"
     CONNECTION LIMIT 5
     IN ROLE balances_reader;
 
--- Belt and braces: every session of this role starts read-only, so even a
--- future grant mistake cannot let it write through this login.
+-- A default, not a control: sessions of this role start read-only, which
+-- blocks accidental writes. A session can switch it off with
+-- SET default_transaction_read_only = off, so it never replaces the grant.
 ALTER ROLE :"login_role" SET default_transaction_read_only = on;
 
 \password :login_role

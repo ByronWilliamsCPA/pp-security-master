@@ -4,7 +4,7 @@
 # DB_* settings in the environment file, wherever that database runs.
 #
 # Order matters and is enforced by running the steps one after another in a
-# single oneshot unit. If a step fails, the later steps do not run:
+# single command. If a step fails, the later steps do not run:
 #   1. import-broker       loads the activity Flex export (trades and CashReport)
 #   2. reconcile-positions loads the OpenPosition Flex export
 #   3. nightly-totals      totals each account on the latest report date
@@ -23,8 +23,14 @@
 #   PP_ACCOUNT_REGISTRY_PATH=/path/outside/repo/account_registry.yaml
 #   PP_FLEX_ACTIVITY_FILE=/path/to/latest/activity_flex.xml
 #   PP_FLEX_POSITIONS_FILE=/path/to/latest/positions_flex.xml
-# Fetching or dropping the two Flex files into place is outside this example;
-# they must exist and be current before the timer fires.
+# Fetching or dropping the two Flex files into place is outside this example.
+# They must be fresh for the night's statement date before the timer fires:
+# re-importing a stale file adds nothing, and nightly-totals then totals an old
+# report date or withholds accounts whose positions and cash dates differ. The
+# first two checks in the command below stop the run if either file was
+# modified more than 24 hours ago. That is a rough staleness check (file age,
+# not the date inside the file); tighten or drop it to suit how the files are
+# delivered.
 
 [Unit]
 Description=EXAMPLE: Security Master nightly broker import and account totals
@@ -37,14 +43,25 @@ User=pp-master
 WorkingDirectory=/opt/pp-security-master
 EnvironmentFile=/etc/pp-security-master/nightly.env
 
-# Sequential by construction: a oneshot unit runs each ExecStart in order and
-# stops at the first failure.
-ExecStart=/opt/pp-security-master/.venv/bin/pp-master import-broker --institution ibkr ${PP_FLEX_ACTIVITY_FILE}
-ExecStart=/opt/pp-security-master/.venv/bin/pp-master reconcile-positions ${PP_FLEX_POSITIONS_FILE}
-ExecStart=/opt/pp-security-master/.venv/bin/pp-master nightly-totals
+# One command runs the three steps in order. "set -e" stops at the first
+# failure, so a failed import never lets nightly-totals run. Keeping them in a
+# single ExecStart also keeps TimeoutStartSec a cap on the whole run: with
+# several ExecStart lines it may apply to each command, and RuntimeMaxSec is
+# ignored on a oneshot unit, so neither could bound the total.
+# $$ is systemd's escape for a literal $; the PP_* values come from the
+# environment file. The first two checks refuse to start on a stale Flex file
+# (modified more than 24 hours ago).
+ExecStart=/bin/sh -ec '\
+  cli=/opt/pp-security-master/.venv/bin/pp-master; \
+  test -n "$$(find "$$PP_FLEX_ACTIVITY_FILE" -mmin -1440)"; \
+  test -n "$$(find "$$PP_FLEX_POSITIONS_FILE" -mmin -1440)"; \
+  "$$cli" import-broker --institution ibkr "$$PP_FLEX_ACTIVITY_FILE"; \
+  "$$cli" reconcile-positions "$$PP_FLEX_POSITIONS_FILE"; \
+  "$$cli" nightly-totals'
 
-# The timer starts at 00:30 America/Los_Angeles. A 45 minute cap means a hung
-# step is killed by 01:15 at the latest, well before the 02:00 deadline.
+# The timer starts at 00:30 America/Los_Angeles. This caps the whole run (the
+# single command above) at 45 minutes, so a hung step is killed by 01:15 at the
+# latest, well before the 02:00 deadline.
 TimeoutStartSec=45min
 
 # Light hardening; adjust for your host.

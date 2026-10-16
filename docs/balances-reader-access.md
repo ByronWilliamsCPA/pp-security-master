@@ -41,7 +41,10 @@ files as a superuser against the Security Master database.
    connections, and starts every session read-only. Keep its password in the
    reader's own secret store, outside this repository.
 
-To remove a reader, run `DROP ROLE <reader_login_name>;`.
+The login script is not idempotent: running it again for an existing reader
+fails at `CREATE ROLE`. To rotate that reader's password, run
+`\password <reader_login_name>` in a superuser `psql` session. To remove a
+reader, run `DROP ROLE <reader_login_name>;`.
 
 ## Require TLS on the server
 
@@ -51,7 +54,8 @@ A reader must never connect in clear text. On the PostgreSQL server:
    certificate authority: `ssl = on`, `ssl_cert_file`, `ssl_key_file`.
 2. In `pg_hba.conf`, allow the reader with a `hostssl` line. A `hostssl`
    line matches only TLS connections, so a clear-text attempt from this role
-   matches no line and is refused (do not add a plain `host` line for it):
+   is refused, provided no earlier, broader `host` line matches it first (do
+   not add a plain `host` line for it, and check the order of existing lines):
 
    ```text
    hostssl  <db-name>  <reader_login_name>  <reader-source-network>  scram-sha-256
@@ -88,13 +92,18 @@ refused with an SSL error, fix the certificate or CA path; do not fall back to
 ## Checks after setup
 
 Run these as the reader. The first should return rows; the rest should fail
-with `permission denied` or a read-only error:
+with `permission denied`. The read-only session default is switched off first,
+so the INSERT is refused by the missing privilege and not by that default:
 
 ```sql
 SELECT count(*) FROM account_balances;
 SELECT count(*) FROM transactions_interactive_brokers;
+SET default_transaction_read_only = off;
 INSERT INTO account_balances (account_key) VALUES ('pp:example:0001');
 ```
+
+The session default only blocks accidental writes and a session can turn it
+off, as above. The grant is the control.
 
 From the admin connection, `\dp account_balances` lists the table privileges;
 `balances_reader` should show `r` (select) only.

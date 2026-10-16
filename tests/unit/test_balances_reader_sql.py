@@ -84,6 +84,20 @@ def split_statements(text: str) -> list[str]:
     return [s for s in statements if s]
 
 
+def _code(path: Path) -> str:
+    """Return the script with comments and psql meta-commands removed."""
+    return " ".join(split_statements(path.read_text(encoding="utf-8")))
+
+
+def _do_bodies(statements: list[str]) -> list[str]:
+    """Return the text between the dollar quotes of every DO block."""
+    bodies: list[str] = []
+    for statement in statements:
+        if statement.upper().startswith("DO "):
+            bodies.extend(re.findall(r"\$\$(.*?)\$\$", statement, re.DOTALL))
+    return bodies
+
+
 def _grant_like(statements: list[str]) -> list[str]:
     return [s for s in statements if re.match(r"^(GRANT|REVOKE)\b", s, re.IGNORECASE)]
 
@@ -171,3 +185,55 @@ def test_no_password_or_host_literal_in_any_script() -> None:
         )
         assert not re.search(r"PASSWORD\s+'", code, re.IGNORECASE), path.name
         assert not re.search(r"\b\d{1,3}(?:\.\d{1,3}){3}\b", text), path.name
+
+
+@pytest.mark.parametrize("path", [GROUP_SCRIPT, LOGIN_SCRIPT])
+def test_no_default_privileges_in_any_script(path: Path) -> None:
+    """Neither script may alter default privileges, at any nesting level."""
+    assert "DEFAULT PRIVILEGES" not in _code(path).upper()
+
+
+def test_do_blocks_only_guard_role_creation() -> None:
+    """A DO block may create the role; it may not grant, revoke, or alter."""
+    statements = split_statements(GROUP_SCRIPT.read_text(encoding="utf-8"))
+    bodies = _do_bodies(statements)
+    assert bodies, "expected the role-creation guard"
+    forbidden = re.compile(
+        r"\b(GRANT|REVOKE|ALTER|DROP|SUPERUSER|INSERT|UPDATE|DELETE|EXECUTE)\b",
+        re.IGNORECASE,
+    )
+    for body in bodies:
+        assert not forbidden.search(body), body
+
+
+def test_every_grant_and_revoke_is_a_top_level_statement() -> None:
+    """No GRANT or REVOKE hides inside a DO block or a string."""
+    for path in (GROUP_SCRIPT, LOGIN_SCRIPT):
+        statements = split_statements(path.read_text(encoding="utf-8"))
+        top_level = sum(
+            1 for s in statements if re.match(r"^(GRANT|REVOKE)\b", s, re.IGNORECASE)
+        )
+        anywhere = len(re.findall(r"\b(GRANT|REVOKE)\b", _code(path), re.IGNORECASE))
+        assert top_level == anywhere, path.name
+
+
+def test_login_role_is_explicitly_not_a_superuser() -> None:
+    """The login role says NOSUPERUSER and nothing in the script grants SUPERUSER."""
+    statements = split_statements(LOGIN_SCRIPT.read_text(encoding="utf-8"))
+    creates = [s for s in statements if "CREATE ROLE" in s.upper()]
+    assert creates
+    assert all(re.search(r"\bNOSUPERUSER\b", s, re.IGNORECASE) for s in creates)
+    assert not re.search(r"\bSUPERUSER\b", _code(LOGIN_SCRIPT), re.IGNORECASE)
+
+
+def test_login_alter_role_only_sets_read_only_default() -> None:
+    """The one ALTER ROLE is the read-only session default, and it is present."""
+    statements = split_statements(LOGIN_SCRIPT.read_text(encoding="utf-8"))
+    alters = [s for s in statements if s.upper().startswith("ALTER ")]
+    assert alters, "default_transaction_read_only is not set"
+    for statement in alters:
+        assert re.match(
+            r'^ALTER ROLE :"login_role" SET default_transaction_read_only = on$',
+            statement,
+            re.IGNORECASE,
+        ), statement
