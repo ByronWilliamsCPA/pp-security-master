@@ -121,7 +121,7 @@ jinja2==3.1.6
     #   pytest-html
 license-expression==30.4.4
     # via cyclonedx-python-lib
-mako==1.3.12
+mako==1.4.3
     # via alembic
 markdown-it-py==4.2.0
     # via rich
