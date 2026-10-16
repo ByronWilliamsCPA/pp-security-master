@@ -9,20 +9,40 @@ on:
     branches: [main]
   merge_group:
 
-# Top-level read-only; write permissions not required for SonarCloud analysis.
+# Top-level read-only; the job below grants only what the reusable workflow needs.
 permissions:
   contents: read
 
 jobs:
   sonarcloud:
     name: SonarCloud Analysis
-    uses: ByronWilliamsCPA/.github/.github/workflows/python-sonarcloud.yml@58cb18497bb2e54a22c6adb47bdaca4d7f615eee  # v2.2.0
-    # The reusable workflow declares sonar-organization and sonar-project-key as
-    # required inputs; omitting them fails the workflow at startup. Values mirror
-    # sonar-project.properties (still bound to the williaby org pending the
-    # acknowledged SonarCloud rebind to byronwilliamscpa).
+    # A called workflow cannot hold more permissions than its caller grants. The
+    # reusable workflow's PR-comment job requests pull-requests: write, so without
+    # this block every run ends in startup_failure before any job starts.
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: ByronWilliamsCPA/.github/.github/workflows/python-sonarcloud.yml@74cfc8e9d1ea1f6babc40bea102b3071af620942  # v11.0.1
+    # Values mirror sonar-project.properties. Note the casing: the Sonar org key is
+    # lowercase, while the project key keeps the GitHub org's capitals.
+    # #ASSUME: SONAR_TOKEN belongs to a member of the byronwilliamscpa Sonar org, and
+    # Automatic Analysis is disabled on this project (CI and automatic analysis
+    # cannot both run on one project).
+    # #VERIFY: the SonarCloud Analysis job log shows an uploaded analysis and the
+    # project dashboard at sonarcloud.io shows a new analysis for this commit.
     with:
-      sonar-organization: williaby
-      sonar-project-key: williaby_pp-security-master
+      sonar-organization: byronwilliamscpa
+      sonar-project-key: ByronWilliamsCPA_pp-security-master
+      # requires-python is ">=3.11" with no ceiling, so this is capped at the newest
+      # version the org supports. SonarPython gates version-specific rules on ALL
+      # declared versions; declaring only the 3.12 build version raised 3.12+ rules
+      # against code that must stay 3.11-compatible.
+      sonar-python-version: '3.11,3.12,3.13,3.14'
+      # The build backend is hatchling, so uv must be allowed to build the project
+      # (same reason ci.yml does not pass --no-build).
+      no-build: false
+      # Fail loudly on a missing or unusable token instead of reporting a green
+      # check with no analysis behind it.
+      skip-if-no-token: false
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
