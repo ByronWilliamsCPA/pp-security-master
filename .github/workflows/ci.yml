@@ -28,7 +28,7 @@ jobs:
   # pip-audit (reads [tool.pip-audit].ignore-vuln from pyproject.toml).
   ci:
     name: Python CI
-    uses: ByronWilliamsCPA/.github/.github/workflows/python-ci.yml@58cb18497bb2e54a22c6adb47bdaca4d7f615eee  # v2.2.0
+    uses: ByronWilliamsCPA/.github/.github/workflows/python-ci.yml@bf4bdcefcbf212c8667740e875c1e7021f851c48  # v2.2.1
     permissions:
       contents: read
     with:
@@ -59,7 +59,7 @@ jobs:
       fail-fast: false
     services:
       postgres:
-        image: postgres:18@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722
+        image: postgres:18@sha256:979bccfde35445db618c65107d27d08c6c21339d8dc3ad4c830c6633947be0e4
         env:
           POSTGRES_PASSWORD: test_password
           POSTGRES_USER: test_user
@@ -73,7 +73,7 @@ jobs:
           - 5432:5432
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1  # v2.21.1
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25  # v2.22.1
         with:
           egress-policy: audit
 
@@ -108,7 +108,7 @@ jobs:
 
       - name: Upload test artifacts
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: integration-test-results-${{ matrix.python-version }}
           path: |
@@ -121,7 +121,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1  # v2.21.1
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25  # v2.22.1
         with:
           egress-policy: audit
 
