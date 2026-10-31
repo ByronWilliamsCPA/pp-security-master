@@ -25,7 +25,7 @@ classifiers = [
 requires-python = ">=3.11"
 dependencies = [
     # Database dependencies
-    "sqlalchemy>=2.0.36,<3.0.0",
+    "sqlalchemy>=2.0.36,<2.1.0",  # 2.1 defaults postgresql:// to psycopg3; project ships psycopg2-binary
     "psycopg2-binary>=2.9,<3.0.0",
     "alembic>=1.14.0,<2.0.0",
     # CLI and configuration
