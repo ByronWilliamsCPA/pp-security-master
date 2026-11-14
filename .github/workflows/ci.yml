@@ -28,7 +28,7 @@ jobs:
   # pip-audit (reads [tool.pip-audit].ignore-vuln from pyproject.toml).
   ci:
     name: Python CI
-    uses: ByronWilliamsCPA/.github/.github/workflows/python-ci.yml@74cfc8e9d1ea1f6babc40bea102b3071af620942  # v11.0.1
+    uses: ByronWilliamsCPA/.github/.github/workflows/python-ci.yml@82ce497cae146787ea65bf892aedfe3262a4638e  # v12.0.1
     permissions:
       contents: read
     with:
